@@ -13,3 +13,5 @@
 
 theories/.vscode
 *.#*
+
+_opam
