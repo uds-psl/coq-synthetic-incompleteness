@@ -85,11 +85,11 @@ Section Abstract.
   Variable sentences : Type.
   Variable neg : sentences -> sentences.
   Hypothesis sentences_discrete : forall (s1 s2 : sentences), (s1 = s2) + (s1 <> s2).
-  Hypothesis sentences_enumerable : Sigma (f : nat -> option sentences), forall s, exists k, f k = Some s.
+  Hypothesis sentences_enumerable : Sigma (f : nat -> sentences), forall s, exists k, f k = s.
 
 
-  Variable (provable_enumerator : nat -> option sentences).
-  Definition provable s := exists k, provable_enumerator k = Some s.
+  Variable (provable_enumerator : nat -> sentences).
+  Definition provable s := exists k, provable_enumerator k = s.
 
   Hypothesis consistent : forall s, provable s -> provable (neg s) -> False.
   Definition completeness := forall s, provable s \/ provable (neg s).
@@ -140,10 +140,8 @@ Section Abstract.
     destruct sentences_enumerable as [sentences_enumerator Hsent].
     unshelve eexists.
     { intros [k1 k2] % unembed.
-      destruct (provable_enumerator k1) as [sprov|]. 2: exact None.
-      destruct (sentences_enumerator k2) as [ssent|]. 2: exact None.
-      destruct (sentences_discrete sprov (neg ssent)).
-      - exact (Some ssent).
+      destruct (sentences_discrete (provable_enumerator k1) (neg (sentences_enumerator k2))).
+      - exact (Some (sentences_enumerator k2)).
       - exact None. }
     intros s. split.
     - intros [k1 Hk1] % undeepen_provability. 2: exact complete.
@@ -153,10 +151,8 @@ Section Abstract.
       now destruct sentences_discrete.
     - intros [k Hk].
       destruct (unembed k) as [k1 k2]. cbn in Hk.
-      destruct provable_enumerator as [s1|] eqn:Hs1. 2: discriminate.
-      destruct sentences_enumerator as [s2|]. 2: discriminate.
       destruct sentences_discrete as [Heq|?]. 2: discriminate.
-      injection Hk. intros ->.
+      injection Hk. intros <-.
       intros Hprov. eapply consistent.
       + exact Hprov.
       + rewrite <- Heq. now exists k1.
@@ -169,7 +165,9 @@ Section Abstract.
       exists (fun '(s1, s2) => if sentences_discrete s1 s2 then true else false).
       intros [s1 s2]. split; destruct sentences_discrete; auto.
     - apply ldecidable_provable, complete.
-    - exists provable_enumerator. intros s. reflexivity.
+    - exists (fun s => Some (provable_enumerator s)). intros s. split.
+      + intros [k Hk]. exists k. congruence.
+      + intros [k [= H]]. now exists k.
     - now apply provable_coenumerable.
   Qed.
 
@@ -242,7 +240,7 @@ Section Abstract.
 
   (* TODO update webpage: short synposis of what im doing (strengthening existing results)) *)
   Section decidability_predicate.
-    Variable (T : Type) (Tdis : forall (t1 t2 : T), (t1 = t2) + (t1 <> t2)) (Tenumerable : Sigma (f : nat -> option T), forall t, exists n, f n = Some t).
+    Variable (T : Type) (Tdis : forall (t1 t2 : T), (t1 = t2) + (t1 <> t2)) (Tenumerable : Sigma (f : nat -> T), forall t, exists n, f n = t).
     Variable (P : T -> Prop).
     Variable srepr : strongly_representable_classic P.
 
@@ -253,14 +251,12 @@ Section Abstract.
       destruct srepr as [psent Hpsent].
       unshelve eexists.
       - intros t k.
-        destruct (provable_enumerator k) as [s|]. 2: exact None.
-        destruct (sentences_discrete s (psent t)).
+        destruct (sentences_discrete (provable_enumerator k) (psent t)).
         + exact (Some ACC).
-        + destruct (sentences_discrete s (neg (psent t))).
+        + destruct (sentences_discrete (provable_enumerator k) (neg (psent t))).
           * exact (Some REJ).
           * exact None.
       - intros x k1 k2 y1 y2. cbn.
-        destruct (provable_enumerator k1) as [s1|] eqn:Hs1, (provable_enumerator k2) as [s2|] eqn:Hs2; try congruence.
         repeat destruct sentences_discrete; try congruence.
         all: edestruct consistent.
         + exists k1. eassumption.
@@ -313,10 +309,8 @@ Section Abstract.
       - destruct srepr as [repr Hrepr], Tenumerable as [Tenum HTenum].
         unshelve eexists.
         { intros k. destruct (unembed k) as [k1 k2].
-          destruct (Tenum k1) as [t|]. 2: exact None.
-          destruct (provable_enumerator k2) as [s|]. 2: exact None.
-          destruct (sentences_discrete (repr t) s).
-          - exact (Some t).
+          destruct (sentences_discrete (repr (Tenum k1)) (provable_enumerator k2)).
+          - exact (Some (Tenum k1)).
           - exact None.
         }
         intros t. split.
@@ -328,13 +322,11 @@ Section Abstract.
           now destruct sentences_discrete.
         + intros [k Hk].
           destruct (unembed k) as [k1 k2]. cbn in Hk.
-          destruct Tenum. 2: discriminate.
-          destruct provable_enumerator eqn:HProv. 2: discriminate.
           destruct sentences_discrete as [Heq|Heq]. 2: discriminate.
           destruct (Pldec t) as [H|H]. 1: assumption.
           edestruct consistent.
-          * exists k2. exact HProv.
-          * rewrite <- Heq. apply Hrepr. congruence.
+          * exists k2. symmetry. exact Heq.
+          * apply Hrepr. congruence.
       (* TODO it might be possible to remove the completeness requirement here
           essentially by inlining the coenumerability proof for the sentences
           that strongly represent *)
@@ -342,10 +334,9 @@ Section Abstract.
         destruct srepr as [repr Hrepr], Tenumerable as [Tenum HTenum].
         unshelve eexists.
         { intros k. destruct (unembed k) as [k1 k2].
-          destruct (Tenum k1) as [t|]. 2: exact None.
           destruct (provable_coenumerator k2) as [s|]. 2: exact None.
-          destruct (sentences_discrete (repr t) s).
-          - exact (Some t).
+          destruct (sentences_discrete (repr (Tenum k1)) s).
+          - exact (Some (Tenum k1)).
           - exact None.
         }
         intros t. split.
@@ -358,7 +349,6 @@ Section Abstract.
           rewrite Hk1, Hk2. now destruct sentences_discrete.
         + intros [k Hk].
           destruct (unembed k) as [k1 k2]. cbn in Hk.
-          destruct Tenum. 2: discriminate.
           destruct provable_coenumerator eqn:Hprov. 2: discriminate.
           destruct sentences_discrete as [Heq|Heq]. 2: discriminate.
           destruct (Pldec t) as [H|H]. 2: assumption.
@@ -386,19 +376,17 @@ Section Abstract.
     Proof.
       unshelve eexists.
       - intros f k.
-        destruct (provable_enumerator k) as [s|]. 2: exact None.
-        destruct (sentences_discrete (p_sentence f ACC) s).
+        destruct (sentences_discrete (p_sentence f ACC) (provable_enumerator k)).
         + exact (Some ACC).
-        + destruct (sentences_discrete (neg (p_sentence f ACC)) s).
+        + destruct (sentences_discrete (neg (p_sentence f ACC)) (provable_enumerator k)).
           * exact (Some REJ).
           * exact None.
       - intros x k1 k2 y1 y2. cbn.
-        destruct (provable_enumerator k1) as [s1|] eqn:Hs1, (provable_enumerator k2) as [s2|] eqn:Hs2; try congruence.
         repeat destruct sentences_discrete; try congruence.
         all: edestruct consistent.
-        + exists k1. eassumption.
+        + exists k1. eauto.
         + exists k2. congruence.
-        + exists k2. eassumption.
+        + exists k2. eauto.
         + exists k1. congruence.
     Defined.
 
