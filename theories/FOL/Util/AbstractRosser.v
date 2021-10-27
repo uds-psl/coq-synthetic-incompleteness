@@ -76,7 +76,7 @@ Proof.
   apply weakPost; auto using senumerable_enumerable.
 Qed.
 
-Definition Post X (p : X -> Prop) := senumerable p -> senumerable (fun x => ~p x) -> decidable p.
+Definition post X (P : X -> Prop) := senumerable P -> senumerable (fun x => ~P x) -> decidable P.
 
 Section s.
   Variable (T R : Type).
@@ -151,12 +151,21 @@ Section Abstract.
   Proof.
     intros Hprovn Hnprov. apply (consistent s); eassumption.
   Qed.
+  Lemma unprovable_nonempty : completeness -> exists s, ~provable s.
+  Proof.
+    intros complete.
+    destruct sentences_enumerable as [sentences_enumerator Hsent].
+    destruct (complete (sentences_enumerator 0)).
+    - exists (neg (sentences_enumerator 0)). intros H1.
+      now destruct (consistent (sentences_enumerator 0)).
+    - exists (sentences_enumerator 0). intros H1.
+      now destruct (consistent (sentences_enumerator 0)).
+  Qed.
 
   Lemma ldecidable_provable : completeness -> ldecidable provable.
   Proof.
     intros complete s. destruct (complete s); intuition.
   Qed.
-
 
   Lemma provable_enumerable : senumerable provable.
   Proof.
@@ -166,13 +175,7 @@ Section Abstract.
   Proof.
     intros complete.
     destruct sentences_enumerable as [sentences_enumerator Hsent].
-    apply enumerable_senumerable.
-    { destruct (complete (sentences_enumerator 0)).
-      - exists (neg (sentences_enumerator 0)). intros H1.
-        now destruct (@consistent (sentences_enumerator 0)).
-      - exists (sentences_enumerator 0). intros H1.
-        now destruct (@consistent (sentences_enumerator 0)).
-    }
+    apply enumerable_senumerable. 1: now apply unprovable_nonempty.
     unshelve eexists.
     { intros [k1 k2] % unembed.
       destruct (sentences_discrete (provable_enumerator k1) (neg (sentences_enumerator k2))).
@@ -188,7 +191,7 @@ Section Abstract.
       destruct sentences_discrete as [Heq|?]. 2: discriminate.
       injection Hk as <-.
       apply deepen_provability. now exists k1.
-  Defined.
+  Qed.
   Lemma decidable_provable : completeness -> decidable provable.
   Proof.
     intros complete.
@@ -244,6 +247,13 @@ Section Abstract.
         + assumption.
     Qed.
 
+    Goal completeness -> weakly_representable -> ldecidable P.
+    Proof.
+      intros complete [f Hf] t.
+      destruct (decidable_provable complete) as [g Hg].
+      specialize (Hg (f t)).
+      unfold reflects in Hg. destruct (g (f t)); firstorder.
+    Qed.
 
     Goal ldecidable provable -> strongly_representable -> strongly_representable_classic.
     Proof.
@@ -311,13 +321,13 @@ Section Abstract.
         destruct sentences_discrete; easy.
     Qed.
 
-    Lemma srepr_fn_correct_iff (ldec : ldecidable P) t
-      : (P t <-> accepts srepr_fn t) /\ (~P t <-> rejects srepr_fn t).
+    Lemma srepr_fn_correct_iff (ldec : ldecidable P) t :
+      (P t <-> accepts srepr_fn t) /\ (~P t <-> rejects srepr_fn t).
     Proof.
       split; split. 1, 3: now apply srepr_fn_correct.
-      - destruct (ldec t) as [H|H]. 1: easy.
+      - intros Hacc.
+        destruct (ldec t) as [H|H]. 1: easy.
         apply srepr_fn_correct in H.
-        intros H'.
         edestruct accepts_rejects; eassumption.
       - destruct (ldec t) as [H|H]. 2: easy.
         apply srepr_fn_correct in H.
@@ -325,6 +335,8 @@ Section Abstract.
         edestruct accepts_rejects; eassumption.
     Qed.
 
+    (* TODO Pairing could be removed for both of these proofs by using
+       decider for provability, but would require completeness *)
     Lemma srepr_enumerable : (ldecidable P) -> enumerable P.
     Proof.
       intros Pldec.
@@ -348,14 +360,16 @@ Section Abstract.
         + exists k2. symmetry. exact Heq.
         + apply Hrepr. congruence.
     Qed.
-    (* TODO it is possible to remove the completeness requirement here
+    (* TODO it is probably possible to remove the completeness requirement here
         essentially by inlining the coenumerability proof only for the sentences
         that strongly represent *)
+    (* TODO including completeness, see srepr_enumerable *)
     Lemma srepr_coenumerable : completeness -> (ldecidable P) -> enumerable (fun t => ~P t).
     Proof.
       intros complete Pldec.
-      destruct provable_coenumerable as [provable_coenumerator Hprov_coenum]. 1: assumption.
-      destruct srepr as [repr Hrepr], Tenumerable as [Tenum HTenum].
+      destruct provable_coenumerable as [provable_coenumerator Hprov_coenum],
+               srepr as [repr Hrepr],
+               Tenumerable as [Tenum HTenum]. 1: assumption.
       unshelve eexists.
       { intros k. destruct (unembed k) as [k1 k2].
         destruct (sentences_discrete (repr (Tenum k1)) (provable_coenumerator k2)).
@@ -363,27 +377,24 @@ Section Abstract.
         - exact None.
       }
       intros t. split.
-      - intros Hnpt. apply Hrepr in Hnpt.
+      - intros Hnpt % Hrepr.
         destruct (HTenum t) as [k1 Hk1].
-        unfold enumerator in Hprov_coenum.
         destruct (Hprov_coenum (repr t)) as [[k2 Hk2] _].
-        1: now apply deepen_provability.
-        exists (embed (k1, k2)). rewrite embedP. cbn.
-        rewrite Hk1, Hk2. now destruct sentences_discrete.
+        + now apply deepen_provability.
+        + exists (embed (k1, k2)). rewrite embedP. cbn.
+          rewrite Hk1, Hk2. now destruct sentences_discrete.
       - intros [k Hk].
         destruct (unembed k) as [k1 k2]. cbn in Hk.
         destruct sentences_discrete as [Heq|Heq]. 2: discriminate.
         destruct (Pldec t) as [H|H]. 2: assumption.
-        destruct (@consistent (repr t)).
+        destruct (consistent (repr t)).
         + now apply Hrepr.
         + apply undeepen_provability. 1: assumption.
           apply Hprov_coenum.
           exists k2. congruence.
     Qed.
-
-
-
     (* TODO it feels like i can replace decidability with markovs principle here *)
+    (* for removing completeness see above *)
     Lemma srepr_decidable : completeness -> (ldecidable P) -> decidable P.
     Proof.
       intros complete Pldec.
@@ -397,21 +408,21 @@ Section Abstract.
     Qed.
   End decidability_predicate.
 
-  Section cg.
+  Section acceptance.
     Variable (T : Type) (t : T).
     (* NOTE: This is not consistent guessing anymore, the acceptance problem *)
-    Definition cg_pred (g : function T out) : Prop := (accepts g t).
+    Definition acceptance_pred (g : function T out) : Prop := (accepts g t).
     (* TODO (why) does implication suffice here? In our old formulation it did as well*)
     (* NOTE This is some kind of representability on a meta-level? *)
-    Hypothesis no_cg : ~exists f, forall g, (cg_pred g -> returns f g ACC) /\ (~cg_pred g -> returns f g REJ).
+    Hypothesis no_acceptance : ~exists f, forall g, (acceptance_pred g -> returns f g ACC) /\ (~acceptance_pred g -> returns f g REJ).
 
-    Lemma cg_false : completeness -> weakly_representable cg_pred -> False.
+    Lemma acceptance_false : completeness -> weakly_representable acceptance_pred -> False.
     Proof.
-      intros complete cg_repr % (weakly_strongly_representable_classic complete).
-      apply no_cg.
-      exists (srepr_fn cg_repr). apply srepr_fn_correct.
+      intros complete acceptance_repr % (weakly_strongly_representable_classic complete).
+      apply no_acceptance.
+      exists (srepr_fn acceptance_repr). apply srepr_fn_correct.
     Qed.
-  End cg.
+  End acceptance.
 
 End Abstract.
 
