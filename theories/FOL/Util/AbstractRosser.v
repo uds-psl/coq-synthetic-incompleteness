@@ -22,32 +22,6 @@ Notation "'Sigma' x .. y , p" :=
 Definition pi1 {A : Type} {P : A -> Type} (e : Sigma x, P x): A := let (x, _) := e in x.
 
 Definition tenumerable X := exists (f : nat -> X), forall x, exists k, f k = x.
-Definition senumerator {X} (f : nat -> X) P := forall x, P x <-> exists n, f n = x.
-Definition senumerable {X} (P : X -> Prop) := exists f, senumerator f P.
-
-Lemma senumerable_enumerable X (P : X -> Prop) : senumerable P -> enumerable P.
-Proof.
-  intros [f Hf]. exists (fun x => Some (f x)).
-  intros x. split.
-  - intros Hpx. apply Hf in Hpx.
-    destruct Hpx as [n Hn]. exists n. congruence.
-  - intros [k Hk].
-    destruct (Hf x) as [H1 H2].
-    apply H2. exists k. congruence.
-Qed.
-Lemma enumerable_senumerable X (P : X -> Prop) : (exists x, P x) -> enumerable P -> senumerable P.
-Proof.
-  intros [a Ha] [f Hf].
-  exists (fix g n := match n with 0 => a | S n => match f n with None => g n | Some x => x end end).
-  intros x. split.
-  - intros Hpx. destruct (Hf x) as [H1 _].
-    destruct (H1 Hpx) as [n Hn]. exists (S n). now rewrite Hn.
-  - intros [n Hn]. induction n.
-    + congruence.
-    + destruct (f n) eqn:H.
-      * apply Hf. exists n. congruence.
-      * apply IHn, Hn.
-Qed.
 
 
 Definition mu (p : nat -> Prop) :
@@ -69,14 +43,6 @@ Proof.
   - intros n. exact _.
   - decide (f n = Some x); decide (g n = Some x); firstorder.
 Qed.
-Theorem sWeakPost X (p : X -> Prop) :
-  discrete X -> ldecidable p -> senumerable p -> senumerable (fun x => ~ p x) -> decidable p.
-Proof.
-  intros Xdis Hl Henum Hnenum.
-  apply weakPost; auto using senumerable_enumerable.
-Qed.
-
-Definition post X (P : X -> Prop) := senumerable P -> senumerable (fun x => ~P x) -> decidable P.
 
 Section s.
   Variable (T R : Type).
@@ -243,7 +209,7 @@ Section Abstract.
       - intros Hnpt. destruct (complete (f t)); firstorder.
     Qed.
 
-    Lemma weakly_represents_ldec : completeness -> weakly_represents -> decidable P.
+    Lemma weakly_represents_dec : completeness -> weakly_represents -> decidable P.
     Proof.
       intros complete Hf.
       destruct (decidable_provable complete) as [g Hg].
@@ -254,147 +220,6 @@ Section Abstract.
   Arguments strongly_represents_classic {T}.
   Definition weakly_representable {T} (P : T -> Prop) := exists f, weakly_represents P f.
   Definition strongly_representable_classic {T} (P : T -> Prop) := exists f, strongly_represents_classic P f.
-
-  Section representable_predicate.
-    Variable (T : Type) (P : T -> Prop).
-    Variable repr : T -> sentences.
-    Section strongly_representable_predicate.
-      Hypothesis Hrepr : strongly_represents_classic P repr.
-
-      (* TODO work on an abstract machine model using Church's Thesis *)
-      (* TODO this as a Coq function using Posts Theorem *)
-      Lemma srepr_fn : function T out.
-      Proof.
-        unshelve eexists.
-        - intros t k.
-          destruct (sentences_discrete (provable_enumerator k) (repr t)).
-          + exact (Some ACC).
-          + destruct (sentences_discrete (provable_enumerator k) (neg (repr t))).
-            * exact (Some REJ).
-            * exact None.
-        - intros x k1 k2 y1 y2. cbn.
-          repeat destruct sentences_discrete; try congruence.
-          all: edestruct consistent.
-          + exists k1. eassumption.
-          + exists k2. congruence.
-          + exists k2. eassumption.
-          + exists k1. congruence.
-      Defined.
-
-      (* This has a flavour of strong representability *)
-      Lemma srepr_fn_correct t : (P t -> accepts srepr_fn t) /\ (~P t -> rejects srepr_fn t).
-      Proof.
-        split.
-        - intros pt. unfold accepts, returns.
-          assert (provable (repr t)) as [k Hk] by intuition.
-          exists k. cbv. rewrite Hk.
-          destruct sentences_discrete; easy.
-        - intros Hnpt. unfold rejects, returns.
-          assert (provable (neg (repr t))) as [k Hk] by intuition.
-          exists k. cbv. rewrite Hk.
-          destruct sentences_discrete as [Heq | ?].
-          + destruct (@neg_no_fixpoint (repr t)).
-            * exists k. congruence.
-            * easy.
-          + destruct sentences_discrete; easy.
-      Qed.
-    End strongly_representable_predicate.
-
-    Section weakly_representable_predicate.
-      Variable (Tdis : forall (t1 t2 : T), (t1 = t2) + (t1 <> t2)) (Tenumerable : Sigma (f : nat -> T), forall t, exists n, f n = t).
-
-      Hypothesis Hrepr : weakly_represents P repr.
-      Hypothesis complete : completeness.
-
-      Lemma wrepr_ldec : ldecidable P.
-      Proof.
-        eapply weakly_represents_ldec; eassumption.
-      Qed.
-      Local Lemma wrepr_srepr : strongly_represents_classic P repr.
-      Proof.
-        now apply weakly_strongly_represents_classic.
-      Qed.
-
-      Lemma wrepr_fn_correct_iff t : (P t <-> accepts srepr_fn t) /\ (~P t <-> rejects srepr_fn t).
-      Proof.
-        split; split. 1, 3: now apply srepr_fn_correct, weakly_strongly_represents_classic.
-        - intros Hacc.
-          destruct (wrepr_ldec t) as [H|H]. 1: easy.
-          apply srepr_fn_correct in H. 2: apply wrepr_srepr.
-          edestruct accepts_rejects; eassumption.
-        - destruct (wrepr_ldec t) as [H|H]. 2: easy.
-          apply srepr_fn_correct in H. 2: apply wrepr_srepr.
-          intros H'.
-          edestruct accepts_rejects; eassumption.
-      Qed.
-
-      (* TODO Pairing could be removed for both of these proofs by using
-        decider for provability, but would require completeness *)
-      Lemma wrepr_enumerable : enumerable P.
-      Proof.
-        destruct Tenumerable as [Tenum HTenum].
-        unshelve eexists.
-        { intros k. destruct (unembed k) as [k1 k2].
-          destruct (sentences_discrete (repr (Tenum k1)) (provable_enumerator k2)).
-          - exact (Some (Tenum k1)).
-          - exact None. }
-        intros t. split.
-        - intros Hpt. apply Hrepr in Hpt.
-          destruct (HTenum t) as [k1 Hk1].
-          destruct (Hpt) as [k2 Hk2].
-          exists (embed (k1, k2)). rewrite embedP. cbn.
-          rewrite Hk1, Hk2. now destruct sentences_discrete.
-        - intros [k Hk].
-          destruct (unembed k) as [k1 k2]. cbn in Hk.
-          destruct sentences_discrete as [Heq|Heq]. 2: discriminate.
-          destruct (wrepr_ldec t) as [H|H]. 1: assumption.
-          edestruct consistent.
-          + exists k2. symmetry. exact Heq.
-          + apply wrepr_srepr. congruence.
-      Qed.
-      Lemma wrepr_coenumerable : enumerable (fun t => ~P t).
-      Proof.
-        destruct provable_coenumerable as [provable_coenumerator Hprov_coenum],
-                Tenumerable as [Tenum HTenum]. 1: assumption.
-        unshelve eexists.
-        { intros k. destruct (unembed k) as [k1 k2].
-          destruct (sentences_discrete (repr (Tenum k1)) (provable_coenumerator k2)).
-          - exact (Some (Tenum k1)).
-          - exact None.
-        }
-        intros t. split.
-        - intros Hnpt % wrepr_srepr.
-          destruct (HTenum t) as [k1 Hk1].
-          destruct (Hprov_coenum (repr t)) as [[k2 Hk2] _].
-          + now apply deepen_provability.
-          + exists (embed (k1, k2)). rewrite embedP. cbn.
-            rewrite Hk1, Hk2. now destruct sentences_discrete.
-        - intros [k Hk].
-          destruct (unembed k) as [k1 k2]. cbn in Hk.
-          destruct sentences_discrete as [Heq|Heq]. 2: discriminate.
-          destruct (wrepr_ldec t) as [H|H]. 2: assumption.
-          destruct (consistent (repr t)).
-          + now apply Hrepr.
-          + apply undeepen_provability. 1: assumption.
-            apply Hprov_coenum.
-            exists k2. congruence.
-      Qed.
-      (* TODO it feels like i can replace decidability with markovs principle here *)
-      (* for removing completeness see above *)
-      Lemma wrepr_decidable : decidable P.
-      Proof.
-        apply weakPost.
-        - unfold discrete, decidable, decider, reflects.
-          exists (fun '(t1, t2) => if Tdis t1 t2 then true else false).
-          intros [t1 t2]. split; destruct Tdis; intuition.
-        - apply wrepr_ldec.
-        - now apply wrepr_enumerable.
-        - now apply wrepr_coenumerable.
-      Qed.
-    End weakly_representable_predicate.
-  End representable_predicate.
-
-  Check wrepr_decidable.
 
   Section acceptance.
     Variable (T : Type) (t : T).
@@ -407,14 +232,8 @@ Section Abstract.
     Lemma acceptance_false : completeness -> weakly_representable acceptance_pred -> False.
     Proof.
       intros complete [f Hf].
-      eapply no_acceptance, wrepr_decidable.
-      - admit.
-      - admit.
-      - exact Hf.
-      - assumption.
-    Admitted.
+      eapply no_acceptance, weakly_represents_dec; eassumption.
+    Qed.
   End acceptance.
 
 End Abstract.
-
-Check srepr_fn_correct.
