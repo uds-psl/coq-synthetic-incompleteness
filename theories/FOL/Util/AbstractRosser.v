@@ -22,6 +22,32 @@ Notation "'Sigma' x .. y , p" :=
 Definition pi1 {A : Type} {P : A -> Type} (e : Sigma x, P x): A := let (x, _) := e in x.
 
 Definition tenumerable X := exists (f : nat -> X), forall x, exists k, f k = x.
+Definition senumerator {X} (f : nat -> X) P := forall x, P x <-> exists n, f n = x.
+Definition senumerable {X} (P : X -> Prop) := exists f, senumerator f P.
+
+Lemma senumerable_enumerable X (P : X -> Prop) : senumerable P -> enumerable P.
+Proof.
+  intros [f Hf]. exists (fun x => Some (f x)).
+  intros x. split.
+  - intros Hpx. apply Hf in Hpx.
+    destruct Hpx as [n Hn]. exists n. congruence.
+  - intros [k Hk].
+    destruct (Hf x) as [H1 H2].
+    apply H2. exists k. congruence.
+Qed.
+Lemma enumerable_senumerable X (P : X -> Prop) : (exists x, P x) -> enumerable P -> senumerable P.
+Proof.
+  intros [a Ha] [f Hf].
+  exists (fix g n := match n with 0 => a | S n => match f n with None => g n | Some x => x end end).
+  intros x. split.
+  - intros Hpx. destruct (Hf x) as [H1 _].
+    destruct (H1 Hpx) as [n Hn]. exists (S n). now rewrite Hn.
+  - intros [n Hn]. induction n.
+    + congruence.
+    + destruct (f n) eqn:H.
+      * apply Hf. exists n. congruence.
+      * apply IHn, Hn.
+Qed.
 
 
 Definition mu (p : nat -> Prop) :
@@ -43,6 +69,14 @@ Proof.
   - intros n. exact _.
   - decide (f n = Some x); decide (g n = Some x); firstorder.
 Qed.
+Theorem sWeakPost X (p : X -> Prop) :
+  discrete X -> ldecidable p -> senumerable p -> senumerable (fun x => ~ p x) -> decidable p.
+Proof.
+  intros Xdis Hl Henum Hnenum.
+  apply weakPost; auto using senumerable_enumerable.
+Qed.
+
+Definition post X (P : X -> Prop) := senumerable P -> senumerable (fun x => ~P x) -> decidable P.
 
 Section s.
   Variable (T R : Type).
