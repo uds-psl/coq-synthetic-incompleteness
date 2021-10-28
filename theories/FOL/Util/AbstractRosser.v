@@ -22,6 +22,7 @@ Notation "'Sigma' x .. y , p" :=
 Definition pi1 {A : Type} {P : A -> Type} (e : Sigma x, P x): A := let (x, _) := e in x.
 
 Definition tenumerable X := exists (f : nat -> X), forall x, exists k, f k = x.
+(* Slightly weaker notion of enumerability, but easier to handle *)
 Definition senumerator {X} (f : nat -> X) P := forall x, P x <-> exists n, f n = x.
 Definition senumerable {X} (P : X -> Prop) := exists f, senumerator f P.
 
@@ -72,8 +73,7 @@ Qed.
 Theorem sWeakPost X (p : X -> Prop) :
   discrete X -> ldecidable p -> senumerable p -> senumerable (fun x => ~ p x) -> decidable p.
 Proof.
-  intros Xdis Hl Henum Hnenum.
-  apply weakPost; auto using senumerable_enumerable.
+  auto using weakPost, senumerable_enumerable.
 Qed.
 
 Definition post X (P : X -> Prop) := senumerable P -> senumerable (fun x => ~P x) -> decidable P.
@@ -210,7 +210,7 @@ Section Abstract.
     Variable f : T -> sentences.
 
     Definition weakly_represents :=
-      forall t, P t <-> provable (f t).
+      forall t, P t -> provable (f t).
     Definition strongly_represents :=
       forall t, (P t -> provable (f t)) /\ (~provable (neg (f t)) -> P t).
     Definition strongly_represents_classic :=
@@ -255,12 +255,21 @@ Section Abstract.
   Definition weakly_representable {T} (P : T -> Prop) := exists f, weakly_represents P f.
   Definition strongly_representable_classic {T} (P : T -> Prop) := exists f, strongly_represents_classic P f.
 
+  Section halting.
+    Hypothesis halting_weakly_representable : weakly_representable (fun (f : nat -> bool) => exists n, f n = true).
+    Hypothesis no_halting : ~decidable (fun (f : nat -> bool) => exists n, f n = true).
+
+    Lemma halting_incomplete : completeness -> False.
+    Proof.
+      intros complete. destruct halting_weakly_representable as [f Hf].
+      eapply no_halting, weakly_represents_dec; eassumption.
+    Qed.
+  End halting.
+
   Section acceptance.
     Variable (T : Type) (t : T).
-    (* NOTE: This is not consistent guessing anymore, the acceptance problem *)
     Definition acceptance_pred (g : function T out) : Prop := (accepts g t).
-    (* TODO (why) does implication suffice here? In our old formulation it did as well*)
-    (* NOTE This is some kind of representability on a meta-level? *)
+
     Hypothesis no_acceptance : ~decidable acceptance_pred.
 
     Lemma acceptance_false : completeness -> weakly_representable acceptance_pred -> False.
@@ -269,5 +278,6 @@ Section Abstract.
       eapply no_acceptance, weakly_represents_dec; eassumption.
     Qed.
   End acceptance.
-
 End Abstract.
+
+Check halting_incomplete.
