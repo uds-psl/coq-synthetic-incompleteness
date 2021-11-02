@@ -12,8 +12,6 @@ Import ListNotations.
 Local Set Implicit Arguments.
 Local Unset Strict Implicit.
 
-(* TODO remove _all_ decidables and so on *)
-
 
 Notation "'Sigma' x .. y , p" :=
   (sigT (fun x => .. (sigT (fun y => p)) ..))
@@ -22,36 +20,8 @@ Notation "'Sigma' x .. y , p" :=
   : type_scope.
 Definition pi1 {A : Type} {P : A -> Type} (e : Sigma x, P x): A := let (x, _) := e in x.
 
-Definition tenumerator X (f : nat -> X) := forall x, exists k, f k = x.
-Definition tenumerable X := exists (f : nat -> X), tenumerator f.
-(* Slightly weaker notion of enumerability, but easier to handle *)
-Definition senumerator {X} (f : nat -> X) P := forall x, P x <-> exists n, f n = x.
-Definition senumerable {X} (P : X -> Prop) := exists f, senumerator f P.
-
-Lemma senumerable_enumerable X (P : X -> Prop) : senumerable P -> enumerable P.
-Proof.
-  intros [f Hf]. exists (fun x => Some (f x)).
-  intros x. split.
-  - intros Hpx. apply Hf in Hpx.
-    destruct Hpx as [n Hn]. exists n. congruence.
-  - intros [k Hk].
-    destruct (Hf x) as [H1 H2].
-    apply H2. exists k. congruence.
-Qed.
-Lemma enumerable_senumerable X (P : X -> Prop) : (exists x, P x) -> enumerable P -> senumerable P.
-Proof.
-  intros [a Ha] [f Hf].
-  exists (fix g n := match n with 0 => a | S n => match f n with None => g n | Some x => x end end).
-  intros x. split.
-  - intros Hpx. destruct (Hf x) as [H1 _].
-    destruct (H1 Hpx) as [n Hn]. exists (S n). now rewrite Hn.
-  - intros [n Hn]. induction n.
-    + congruence.
-    + destruct (f n) eqn:H.
-      * apply Hf. exists n. congruence.
-      * apply IHn, Hn.
-Qed.
-
+Definition tenumerator X (f : nat -> option X) := forall x, exists k, f k = Some x.
+Definition tenumerable X := exists (f : nat -> option X), tenumerator f.
 
 Definition mu (p : nat -> Prop) :
   (forall x, dec (p x)) -> ex p -> sig p.
@@ -71,12 +41,6 @@ Proof.
   destruct (@mu (fun n => f n = Some x \/ g n = Some x)) as [n HN]; trivial.
   - intros n. exact _.
   - decide (f n = Some x); decide (g n = Some x); firstorder.
-Qed.
-(* TODO weaken post to use sigmas instead of existentials *)
-Theorem sWeakPost X (p : X -> Prop) :
-  discrete X -> ldecidable p -> senumerable p -> senumerable (fun x => ~ p x) -> decidable p.
-Proof.
-  auto using weakPost, senumerable_enumerable.
 Qed.
 
 Section s.
@@ -122,11 +86,11 @@ Arguments rejects {T}.
 Section Abstract.
   Variable (sentences : Type) (neg : sentences -> sentences).
   Hypothesis sentences_discrete : forall (s1 s2 : sentences), (s1 = s2) + (s1 <> s2).
-  Variable sentences_enumerator : nat -> sentences.
+  Variable sentences_enumerator : nat -> option sentences.
   Hypothesis sentences_enumerable : tenumerator sentences_enumerator.
 
-  Variable (provable_enumerator : nat -> sentences).
-  Definition provable s := exists k, provable_enumerator k = s.
+  Variable (provable : sentences -> Prop) (provable_enumerator : nat -> option sentences).
+  Hypothesis provable_enumerable : enumerator provable_enumerator provable.
 
   Hypothesis consistent : forall s, provable s -> provable (neg s) -> False.
   Arguments consistent s : clear implicits.
@@ -155,54 +119,44 @@ Section Abstract.
   Proof.
     intros Hprovn Hnprov. apply (consistent s); eassumption.
   Qed.
-  Lemma unprovable_nonempty : completeness -> exists s, ~provable s.
-  Proof.
-    intros complete.
-    destruct (complete (sentences_enumerator 0)).
-    - exists (neg (sentences_enumerator 0)). intros H1.
-      now destruct (consistent (sentences_enumerator 0)).
-    - exists (sentences_enumerator 0). intros H1.
-      now destruct (consistent (sentences_enumerator 0)).
-  Qed.
 
   Lemma ldecidable_provable : completeness -> ldecidable provable.
   Proof.
     intros complete s. destruct (complete s); intuition.
   Qed.
 
-  Lemma provable_enumerable : senumerable provable.
-  Proof.
-    now exists provable_enumerator.
-  Qed.
-  Lemma provable_coenumerable : completeness -> senumerable (fun s => ~provable s).
+  Lemma provable_coenumerable : completeness -> enumerable (fun s => ~provable s).
   Proof.
     intros complete.
-    apply enumerable_senumerable. 1: now apply unprovable_nonempty.
     unshelve eexists.
     { intros [k1 k2] % unembed.
-      destruct (sentences_discrete (provable_enumerator k1) (neg (sentences_enumerator k2))).
-      - exact (Some (sentences_enumerator k2)).
+      destruct (provable_enumerator k1) as [p|]. 2: exact None.
+      destruct (sentences_enumerator k2) as [s|]. 2: exact None.
+      destruct (sentences_discrete p (neg s)).
+      - exact (Some s).
       - exact None. }
     intros s. split.
-    - intros [k1 Hk1] % undeepen_provability. 2: exact complete.
+    - intros Hprov.
+      apply undeepen_provability, provable_enumerable in Hprov as [k1 Hk1]. 2: assumption.
       destruct (sentences_enumerable s) as [k2 Hk2].
       exists (embed (k1, k2)). rewrite embedP. cbn.
-      rewrite Hk1, Hk2. now destruct sentences_discrete.
+      destruct provable_enumerator, sentences_enumerator. 2-4: discriminate.
+      destruct sentences_discrete; congruence.
     - intros [k Hk].
       destruct (unembed k) as [k1 k2]. cbn in Hk.
+      destruct (provable_enumerator k1) eqn:H, (sentences_enumerator k2). 2-4: discriminate.
       destruct sentences_discrete as [Heq|?]. 2: discriminate.
-      injection Hk as <-.
-      apply deepen_provability. now exists k1.
+      apply deepen_provability. apply provable_enumerable. exists k1.
+      congruence.
   Qed.
   Lemma decidable_provable : completeness -> decidable provable.
   Proof.
     intros complete.
-    apply sWeakPost.
-    - unfold discrete, decidable, decider, reflects.
-      exists (fun '(s1, s2) => if sentences_discrete s1 s2 then true else false).
+    apply weakPost.
+    - exists (fun '(s1, s2) => if sentences_discrete s1 s2 then true else false).
       intros [s1 s2]. split; destruct sentences_discrete; auto.
     - apply ldecidable_provable, complete.
-    - apply provable_enumerable.
+    - now exists provable_enumerator.
     - apply provable_coenumerable, complete.
   Qed.
 
@@ -264,20 +218,21 @@ Section Abstract.
     Section strongly_representable_predicate.
       Hypothesis Hrepr : strongly_represents_classic P repr.
 
-      (* TODO work on an abstract machine model using Church's Thesis *)
-      (* TODO this as a Coq function using Posts Theorem *)
       Lemma srepr_fn : function T out.
       Proof.
         unshelve eexists.
         - intros t k.
-          destruct (sentences_discrete (provable_enumerator k) (repr t)).
+          destruct (provable_enumerator k) as [s|]. 2: exact None.
+          destruct (sentences_discrete s (repr t)).
           + exact (Some ACC).
-          + destruct (sentences_discrete (provable_enumerator k) (neg (repr t))).
+          + destruct (sentences_discrete s (neg (repr t))).
             * exact (Some REJ).
             * exact None.
         - intros x k1 k2 y1 y2. cbn.
+          destruct (provable_enumerator k1) eqn:H1. 2: congruence.
+          destruct (provable_enumerator k2) eqn:H2. 2: congruence.
           repeat destruct sentences_discrete; try congruence.
-          all: edestruct consistent.
+          all: edestruct consistent; apply provable_enumerable.
           + exists k1. eassumption.
           + exists k2. congruence.
           + exists k2. eassumption.
@@ -288,15 +243,15 @@ Section Abstract.
       Proof.
         split.
         - intros pt. unfold accepts, returns.
-          assert (provable (repr t)) as [k Hk] by intuition.
+          assert (provable (repr t)) as [k Hk] % provable_enumerable by intuition.
           exists k. cbv. rewrite Hk.
           destruct sentences_discrete; easy.
         - intros Hnpt. unfold rejects, returns.
-          assert (provable (neg (repr t))) as [k Hk] by intuition.
+          assert (provable (neg (repr t))) as [k Hk] % provable_enumerable by intuition.
           exists k. cbv. rewrite Hk.
           destruct sentences_discrete as [Heq | ?].
           + destruct (@neg_no_fixpoint (repr t)).
-            * exists k. congruence.
+            * apply provable_enumerable. exists k. congruence.
             * easy.
           + destruct sentences_discrete; easy.
       Qed.
@@ -352,14 +307,12 @@ Section Abstract.
   End halting.
 
   Section cg.
-    Variable (T : Type)
-             (Tdis : forall (t1 t2 : T), (t1 = t2) + (t1 <> t2))
-             (Tenumerable : Sigma (f : nat -> T), forall t, exists n, f n = t).
+    Variable (T : Type).
 
     Variable repr : function T out -> T -> out -> sentences.
     Hypothesis Hrepr : forall (f: function T out) (t : T) (y : out),
         (returns f t y -> provable (repr f t y)) /\
-        forall y', returns f t y -> y' <> y -> provable (neg (repr f t y')).
+        forall y', returns f t y -> y' <> y -> ~provable (repr f t y').
 
     Hypothesis provable_decidable : forall s, (provable s) + ~provable s.
 
@@ -377,123 +330,78 @@ Section Abstract.
     Proof.
       intros g t. split.
       - intros H % Hrepr. cbv.
-        destruct provable_decidable as [H'|H'].
-        + reflexivity.
-        + contradiction.
+        now destruct provable_decidable as [H'|H'].
       - intros Hrej.
-        assert (provable (neg (repr g t ACC))) as H.
+        assert (~provable (repr g t ACC)) as H.
         { eapply Hrepr. 1: exact Hrej. congruence. }
-        cbv. destruct provable_decidable as [H'|H'].
-        + destruct (consistent _ H' H).
-        + reflexivity.
+        cbv. now destruct provable_decidable as [H'|H'].
     Qed.
   End cg.
 
   Section CT.
-    (* TODO see above *)
     Hypothesis provable_decidable : forall s, (provable s) + ~provable s.
 
-    (* I need to encode partial functions... *)
     Variable phi : nat -> nat -> nat -> option nat.
-    Hypothesis CT : forall f, exists c, forall x, match f x with
-                                     None => forall n, phi c x n = None
-                                   | Some y => exists n, phi c x n = Some y
-                                   end.
-    (* Hypothesis SI : forall c x n1 n2 y, phi c x n1 = Some y -> n2 >= n1 -> phi c x n2 = Some y. *)
+    Hypothesis CT : forall f, exists c, forall x, exists n, phi c x n = Some (f x).
 
     Definition CTreturns c x y := exists n, phi c x n = Some y.
     Definition CThalts c x := exists y, CTreturns c x y.
-    Definition CTdecider c (P : nat -> Prop) :=
-      forall x, (P x -> CTreturns c x 0) /\ (~P x -> CTreturns c x 1).
 
-    Variable wrepr : nat -> nat -> sentences.
-    Hypothesis Hwrepr : forall (c x : nat), CThalts c x <-> provable (wrepr c x).
+    Section CTguess.
+      Variable repr : nat -> nat -> nat -> sentences.
+      Hypothesis Hrepr : forall (c x y : nat),
+          (CTreturns c x y -> provable (repr c x y)) /\
+            forall y', CTreturns c x y -> y <> y' -> ~provable ((repr c x y')).
 
-    Lemma CTwrepr_dec (c x : nat) : (CThalts c x) + ~CThalts c x.
-    Proof.
-      enough (provable (wrepr c x) + ~provable (wrepr c x)) as [H|H].
-      - left. now apply Hwrepr.
-      - right. contradict H. now apply Hwrepr.
-      - intuition.
-    Qed.
+      Definition CGpred (p : nat -> nat -> Prop) := forall c x,
+          (CTreturns c x 0 -> p c x) /\
+            (CTreturns c x 1 -> ~p c x).
 
-    Lemma CTspecial_halting : ~decidable (fun d => CThalts d d).
-    Proof.
-      unfold CThalts, CTreturns, decidable, decider, reflects.
-      intros [f Hf].
-      destruct (CT (fun n => if f n then None else Some 1)) as [c Hc].
-      specialize (Hf c).
-      specialize (Hc c).
-      destruct (f c).
-      - destruct Hf as [_ H].
-        destruct (H eq_refl) as (y & n & Hyn).
-        congruence.
-      - enough (false = true) by congruence.
-        apply Hf. destruct Hc as [n Hc].
-        now exists 1, n.
-    Qed.
-    Lemma CTwrepr : False.
-    Proof.
-      apply CTspecial_halting.
-      exists (fun d => if CTwrepr_dec d d then true else false).
-      intros d. split; now destruct CTwrepr_dec.
-    Qed.
+      Lemma CGpred_dec : exists p f, CGpred p /\ forall c x, p c x <-> f c x = true.
+      Proof.
+        exists (fun c x => if provable_decidable (repr c x 0) then True else False).
+        exists (fun c x => if provable_decidable (repr c x 0) then true else false).
+        split.
+        - intros c x. split.
+          + intros Hprov % Hrepr. now destruct provable_decidable.
+          + intros Hret. destruct provable_decidable. 2: easy.
+            intros _. destruct (Hrepr c x 1) as [_ H].
+            now apply (H 0).
+        - intros c x. destruct provable_decidable; easy.
+      Qed.
 
-    Variable repr : nat -> nat -> nat -> sentences.
-    Hypothesis Hrepr : forall (c x y : nat),
-        (CTreturns c x y -> provable (repr c x y)) /\
-          forall y', CTreturns c x y -> y <> y' -> ~provable ((repr c x y')).
+      Lemma CGpred_undec p : CGpred p -> ~exists f, forall c x, p c x <-> f c x = true.
+      Proof.
+        intros HCG [f Hf].
+        destruct (CT (fun c => if f c c then 1 else 0)) as [c Hc].
+        specialize (Hc c).
+        specialize (Hf c c).
+        specialize (HCG c c).
+        destruct (f c c).
+        - apply HCG; tauto.
+        - enough (false = true) by discriminate. apply Hf, HCG, Hc.
+      Qed.
 
-    Definition CTrepr_fn (c x : nat) : nat.
-    Proof.
-      destruct (provable_decidable (repr c x 0)).
-      - exact 0.
-      - exact 1.
-    Defined.
-    Lemma CTrepr_fn_correct : forall c x,
-        (CTreturns c x 0 -> CTrepr_fn c x = 0) /\
-          (CTreturns c x 1 -> CTrepr_fn c x = 1).
-    Proof.
-      intros c x. split.
-      - intros Hprov % Hrepr. cbv.
-        destruct provable_decidable as [H|H].
-        + reflexivity.
-        + contradiction.
-      - intros Hret1.
-        assert (~provable ((repr c x 0))) as H.
-        { now apply (Hrepr c x 1). }
-        cbv. destruct provable_decidable as [H'|H']; easy.
-    Qed.
+      Lemma CTrepr : False.
+      Proof.
+        destruct CGpred_dec as (p & f & HCG & Hdec).
+        apply (CGpred_undec HCG); eauto.
+      Qed.
 
-    Lemma CTcg : ~exists (f : nat -> nat), forall c x,
-                     (CTreturns c x 0 -> f (embed (c, x)) = 0) /\
-                       (CTreturns c x 1 -> f (embed (c, x)) = 1).
-    Proof.
-      intros [f Hf].
-      destruct (CT (fun c => if f (embed (c, c)) then Some 1 else Some 0)) as [c Hc].
-      specialize (Hc c).
-      specialize (Hf c c).
-      destruct (f (embed (c, c))).
-      - enough (0 = 1) by congruence. apply Hf. exact Hc.
-      - enough (S n = 0) by congruence. apply Hf. exact Hc.
-    Qed.
-    Lemma CTcg2 : ~exists (f : nat -> nat), forall c x y, (CTreturns c x y -> f (embed (c, x)) = y).
-    Proof.
-      intros [f Hf].
-      destruct (CT (fun c => Some (S (f (embed (c, c)))))) as [c Hc].
-      specialize (Hf c c (S (f (embed (c, c)))) (Hc c)).
-      lia.
-    Qed.
-
-    Lemma CTrepr : False.
-    Proof.
-      apply CTcg.
-      exists (fun t => let (c, x) := unembed t in CTrepr_fn c x).
-      intros c x. split; rewrite embedP; apply CTrepr_fn_correct.
-    Qed.
-
+      Lemma CTrepr_explicit : exists s, ~provable s /\ ~provable (neg s).
+      Proof.
+        destruct CGpred_dec as (p & f & HCG & Hdec).
+        destruct (CT (fun c => if f c c then 1 else 0)) as [c Hc].
+        exists (repr c c 0).
+        specialize (Hc c). specialize (Hdec c c). specialize (HCG c c).
+        split.
+        - destruct (f c c); eapply Hrepr.
+          + exact Hc.
+          + discriminate.
+          + exact Hc.
+          + firstorder.
+        - destruct (f c c); firstorder.
+      Qed.
+    End CTguess.
   End CT.
-  Check CTrepr.
 End Abstract.
-
-Check CTrepr.
