@@ -374,9 +374,7 @@ Section Abstract.
       Proof.
         intros HCG [f Hf].
         destruct (CT (fun c => if f c c then 1 else 0)) as [c Hc].
-        specialize (Hc c).
-        specialize (Hf c c).
-        specialize (HCG c c).
+        specialize (Hc c). specialize (Hf c c). specialize (HCG c c).
         destruct (f c c).
         - apply HCG; tauto.
         - enough (false = true) by discriminate. apply Hf, HCG, Hc.
@@ -395,11 +393,12 @@ Section Abstract.
         exists (repr c c 0).
         specialize (Hc c). specialize (Hdec c c). specialize (HCG c c).
         split.
-        - destruct (f c c); eapply Hrepr.
-          + exact Hc.
-          + discriminate.
-          + exact Hc.
-          + firstorder.
+        - destruct (f c c).
+          + intros Hprov. apply HCG.
+            * exact Hc.
+            * now apply Hdec.
+          + intros Hprov. enough (p c c) by intuition.
+            apply HCG, Hc.
         - destruct (f c c); firstorder.
       Qed.
     End CTguess.
