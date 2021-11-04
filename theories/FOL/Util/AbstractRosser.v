@@ -404,3 +404,8 @@ Section Abstract.
     End CTguess.
   End CT.
 End Abstract.
+
+From Undecidability.FOL.Util Require Import Syntax_facts FullDeduction FullDeduction_facts FullTarski FullTarski_facts Axiomatisations.
+From Undecidability.FOL Require Import PA.
+Definition Q := list_theory Qeq.
+Check forall (T : form -> Prop), Q <<= T -> ~(T ⊢TC ⊥) -> exists phi, ~(T ⊢TC phi) /\ ~(T ⊢TC ¬phi).
