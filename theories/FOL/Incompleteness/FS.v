@@ -30,14 +30,13 @@ Proof.
 Qed.
 
 
-Class FS : Type := mkFS {
-                    sentences : Type
-                  ; neg : sentences -> sentences
-                  ; sentences_discrete : discrete sentences
-                  ; sentences_enumerable : tenumerable sentences
-                  ; provable : sentences -> Prop
-                  ; provable_enumerable : enumerable provable
-                  ; consistent : forall s, provable s -> provable (neg s) -> False}.
+Class FS : Type := mkFS { sentences : Type
+                    ; neg : sentences -> sentences
+                    ; sentences_discrete : discrete sentences
+                    ; sentences_enumerable : tenumerable sentences
+                    ; provable : sentences -> Prop
+                    ; provable_enumerable : enumerable provable
+                    ; consistent : forall s, provable s -> provable (neg s) -> False }.
 (* TODO is there syntax for non-implicit arguments? why is s taken implicitly here? *)
 Arguments consistent {_} _ _ _.
 
@@ -172,5 +171,7 @@ Module instantiation.
     Qed.
   End instantiation.
 End instantiation.
+Definition fs_fo := instantiation.fs_fo.
+Check fs_fo.
 
 Check instantiation.form_discrete.
