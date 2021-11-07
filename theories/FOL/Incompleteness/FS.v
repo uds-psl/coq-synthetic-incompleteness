@@ -2,6 +2,7 @@
 
 From Undecidability.Synthetic Require Import DecidabilityFacts EnumerabilityFacts ReducibilityFacts.
 From Undecidability.Shared Require Import embed_nat Dec.
+From Equations Require Import Equations.
 Require Import ConstructiveEpsilon.
 
 Local Set Implicit Arguments.
@@ -120,33 +121,96 @@ Module instantiation.
   Section instantiation.
     Context {Σ_funcs : funcs_signature}.
     Context {Σ_preds : preds_signature}.
-    Hypothesis (syms_discrete : discrete syms) (syms_enumerable : enumerable__T syms).
-    Hypothesis (preds_discrete : discrete preds) (preds_enumerable : enumerable__T preds).
+    Hypothesis (syms_eq_dec : eq_dec syms) (syms_enumerable : enumerable__T syms).
+    Hypothesis (preds_eq_dec : eq_dec preds) (preds_enumerable : enumerable__T preds).
 
     (* It suffices to talk about finite extensions here for the purposes
        of talking about Q because of compactness *)
     Context (T : form -> Prop) (T_enumerable : enumerable T).
     Hypothesis consistent : ~ T ⊢TC ⊥.
 
-    Search (discrete form).
-    Lemma form_discrete : discrete form.
+
+    Instance EqDec_syms : EqDec syms.
     Proof.
-      (* I have no idea why forms_discrete required eq_dec for syms, preds *)
-      apply discrete_iff in syms_discrete as [].
-      apply discrete_iff in preds_discrete as [].
-      now unshelve eapply form_discrete.
+      intros x y. apply syms_eq_dec.
     Qed.
-    Lemma form_enumerable : enumerable__T form.
+    Instance EqDec_preds : EqDec preds.
     Proof.
-      now unshelve eapply form_enumerable.
+      intros x y. apply preds_eq_dec.
     Qed.
 
-    Definition provable (phi : form) := T ⊢TC phi.
+    Definition closed phi :=
+      (if bounded_dec phi 0 then true else false) = true.
+
+    Lemma closed_mere phi (H H' : closed phi) :
+      H = H'.
+    Proof.
+      apply EqDec.peq_proofs_unicity.
+    Qed.
+    Lemma bounded_closed phi :
+      bounded 0 phi <-> closed phi.
+    Proof.
+      unfold closed. destruct bounded_dec; intuition congruence.
+    Qed.
+
+    Lemma closed_dec phi :
+      dec (closed phi).
+    Proof.
+      eapply dec_transfer; try apply bounded_closed. apply bounded_dec.
+    Qed.
+
+    Lemma bot_closed :
+      closed ⊥.
+    Proof.
+      apply bounded_closed. constructor.
+    Qed.
+
+    Lemma closed_discrete :
+      discrete {phi | closed phi}.
+    Proof.
+      apply decidable_iff. constructor. intros [[phi H1] [psi H2]].
+      destruct dec_form with falsity_on phi psi as [->|H]; eauto.
+      1,2: intros x y; unfold dec; decide equality.
+      - left. f_equal. apply closed_mere.
+      - right. intros [=]. tauto.
+    Qed.
+
+    Lemma closed_enum :
+      enumerable__T form -> enumerable__T {phi | closed phi}.
+    Proof.
+      intros [f Hf]. unshelve eexists.
+      - intros n. destruct (f n) as [phi|].
+        + destruct (closed_dec phi) as [H|_].
+          * apply Some. now exists phi.
+          * exact None.
+        + exact None.
+      - intros [phi Hp]. destruct (Hf phi) as [n Hn].
+        exists n. cbn. rewrite Hn. destruct closed_dec as [H|H]; try tauto.
+        repeat f_equal. apply closed_mere.
+    Qed.
+
+
+    Definition provable (phi : {phi | closed phi}) := T ⊢TC proj1_sig phi.
     Lemma provable_enumerable : enumerable provable.
     Proof.
-      apply discrete_iff in syms_discrete as [].
-      apply discrete_iff in preds_discrete as [].
-      now unshelve eapply tprv_enumerable.
+      unfold provable.
+      assert (enumerable (fun phi => T ⊢TC phi)) as [f Hf] by now unshelve eapply tprv_enumerable.
+      unshelve eexists.
+      - intros k. destruct (f k) as [phi|]. 2: exact None.
+        destruct (closed_dec phi).
+        + left. now exists phi.
+        + exact None.
+      - intros [phi Hphi]. split; cbn.
+        + intros [k Hk]%(Hf phi). exists k.
+          destruct (f k). 2: congruence.
+          destruct closed_dec; subst.
+          * injection Hk. intros. subst.
+            repeat f_equal. apply closed_mere.
+          * injection Hk. intros. subst. congruence.
+        + intros [k Hk].
+          destruct (f k) eqn:H. 2: congruence.
+          destruct closed_dec. 2: congruence.
+          apply Hf. exists k. congruence.
     Qed.
 
     Lemma consistency : forall phi, T ⊢TC phi -> T ⊢TC ¬phi -> False.
@@ -161,17 +225,24 @@ Module instantiation.
     Instance fs_fo : FS.
     Proof.
       unshelve econstructor.
-      - exact form.
-      - exact (fun phi => ¬phi).
+      - exact {phi | closed phi}.
+      - intros [phi Hphi]. exists (¬phi).
+        apply bounded_closed.
+        constructor.
+        + apply bounded_closed. exact Hphi.
+        + constructor.
       - exact provable.
-      - exact form_discrete.
-      - exact form_enumerable.
+      - exact closed_discrete.
+      - apply closed_enum.
+        now unshelve eapply form_enumerable.
       - exact provable_enumerable.
-      - exact consistency.
+      - cbn. intros [] H1 H2.
+        eapply consistency.
+        + exact H1.
+        + exact H2.
     Qed.
   End instantiation.
 End instantiation.
 Definition fs_fo := instantiation.fs_fo.
 Check fs_fo.
 
-Check instantiation.form_discrete.
