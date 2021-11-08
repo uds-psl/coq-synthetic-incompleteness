@@ -124,10 +124,12 @@ Module instantiation.
     Hypothesis (syms_eq_dec : eq_dec syms) (syms_enumerable : enumerable__T syms).
     Hypothesis (preds_eq_dec : eq_dec preds) (preds_enumerable : enumerable__T preds).
 
+    Context {peirce : peirce}.
+
     (* It suffices to talk about finite extensions here for the purposes
        of talking about Q because of compactness *)
     Context (T : form -> Prop) (T_enumerable : enumerable T).
-    Hypothesis consistent : ~ T ⊢TC ⊥.
+    Hypothesis consistent : ~ T ⊢T ⊥.
 
 
     Instance EqDec_syms : EqDec syms.
@@ -190,11 +192,11 @@ Module instantiation.
     Qed.
 
 
-    Definition provable (phi : {phi | closed phi}) := T ⊢TC proj1_sig phi.
+    Definition provable (phi : {phi | closed phi}) := T ⊢T proj1_sig phi.
     Lemma provable_enumerable : enumerable provable.
     Proof.
       unfold provable.
-      assert (enumerable (fun phi => T ⊢TC phi)) as [f Hf] by now unshelve eapply tprv_enumerable.
+      assert (enumerable (fun phi => T ⊢T phi)) as [f Hf] by now unshelve eapply tprv_enumerable.
       unshelve eexists.
       - intros k. destruct (f k) as [phi|]. 2: exact None.
         destruct (closed_dec phi).
@@ -213,7 +215,7 @@ Module instantiation.
           apply Hf. exists k. congruence.
     Qed.
 
-    Lemma consistency : forall phi, T ⊢TC phi -> T ⊢TC ¬phi -> False.
+    Lemma consistency : forall phi, T ⊢T phi -> T ⊢T ¬phi -> False.
     Proof.
       intros phi (L1 & Hsub1 & Hprov1) (L2 & Hsub2 & Hprov2).
       apply consistent.
