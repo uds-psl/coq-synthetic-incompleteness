@@ -1,7 +1,5 @@
 (** * Abstract Incompleteness using Rosser's Trick *)
-
-From Undecidability.Synthetic Require Import Definitions Undecidability.
-From Undecidability.Synthetic Require Import DecidabilityFacts EnumerabilityFacts ReducibilityFacts.
+From Undecidability.Synthetic Require Import Definitions Undecidability. From Undecidability.Synthetic Require Import DecidabilityFacts EnumerabilityFacts ReducibilityFacts.
 From Undecidability.Synthetic Require Import ListEnumerabilityFacts MoreEnumerabilityFacts.
 From Undecidability.Shared Require Import Dec embed_nat.
 From Equations Require Import Equations.
@@ -338,74 +336,5 @@ Section Abstract.
     Qed.
   End cg.
 
-  Section CT.
-    Hypothesis provable_decidable : forall s, (provable s) + ~provable s.
 
-    Variable phi : nat -> nat -> nat -> option nat.
-    Hypothesis CT : forall f, exists c, forall x, exists n, phi c x n = Some (f x).
-
-    Definition CTreturns c x y := exists n, phi c x n = Some y.
-    Definition CThalts c x := exists y, CTreturns c x y.
-
-    Section CTguess.
-      Variable repr : nat -> nat -> nat -> sentences.
-      Hypothesis Hrepr : forall (c x y : nat),
-          (CTreturns c x y -> provable (repr c x y)) /\
-            forall y', CTreturns c x y -> y <> y' -> ~provable ((repr c x y')).
-
-      Definition CGpred (p : nat -> nat -> Prop) := forall c x,
-          (CTreturns c x 0 -> p c x) /\
-            (CTreturns c x 1 -> ~p c x).
-
-      Lemma CGpred_dec : exists p f, CGpred p /\ forall c x, p c x <-> f c x = true.
-      Proof.
-        exists (fun c x => if provable_decidable (repr c x 0) then True else False).
-        exists (fun c x => if provable_decidable (repr c x 0) then true else false).
-        split.
-        - intros c x. split.
-          + intros Hprov % Hrepr. now destruct provable_decidable.
-          + intros Hret. destruct provable_decidable. 2: easy.
-            intros _. destruct (Hrepr c x 1) as [_ H].
-            now apply (H 0).
-        - intros c x. destruct provable_decidable; easy.
-      Qed.
-
-      Lemma CGpred_undec p : CGpred p -> ~exists f, forall c x, p c x <-> f c x = true.
-      Proof.
-        intros HCG [f Hf].
-        destruct (CT (fun c => if f c c then 1 else 0)) as [c Hc].
-        specialize (Hc c). specialize (Hf c c). specialize (HCG c c).
-        destruct (f c c).
-        - apply HCG; tauto.
-        - enough (false = true) by discriminate. apply Hf, HCG, Hc.
-      Qed.
-
-      Lemma CTrepr : False.
-      Proof.
-        destruct CGpred_dec as (p & f & HCG & Hdec).
-        apply (CGpred_undec HCG); eauto.
-      Qed.
-
-      Lemma CTrepr_explicit : exists s, ~provable s /\ ~provable (neg s).
-      Proof.
-        destruct CGpred_dec as (p & f & HCG & Hdec).
-        destruct (CT (fun c => if f c c then 1 else 0)) as [c Hc].
-        exists (repr c c 0).
-        specialize (Hc c). specialize (Hdec c c). specialize (HCG c c).
-        split.
-        - destruct (f c c).
-          + intros Hprov. apply HCG.
-            * exact Hc.
-            * now apply Hdec.
-          + intros Hprov. enough (p c c) by intuition.
-            apply HCG, Hc.
-        - destruct (f c c); firstorder.
-      Qed.
-    End CTguess.
-  End CT.
 End Abstract.
-
-From Undecidability.FOL.Util Require Import Syntax_facts FullDeduction FullDeduction_facts FullTarski FullTarski_facts Axiomatisations.
-From Undecidability.FOL Require Import PA.
-Definition Q := list_theory Qeq.
-Check forall (T : form -> Prop), Q <<= T -> ~(T ⊢TC ⊥) -> exists phi, ~(T ⊢TC phi) /\ ~(T ⊢TC ¬phi).

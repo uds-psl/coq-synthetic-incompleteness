@@ -8,15 +8,23 @@ Require Import ConstructiveEpsilon.
 Local Set Implicit Arguments.
 Local Unset Strict Implicit.
 
-Definition tenumerator X (f : nat -> option X) := forall x, exists k, f k = Some x.
-Definition tenumerable X := exists (f : nat -> option X), tenumerator f.
-
 Definition ldecidable X (p : X -> Prop) := forall x, p x \/ ~p x.
 
 Definition mu (p : nat -> Prop) :
   (forall x, dec (p x)) -> ex p -> sig p.
 Proof.
   apply constructive_indefinite_ground_description_nat_Acc.
+Qed.
+
+Lemma totalize (f : nat -> nat -> option nat) : (forall x, exists k y, f x k = Some y) -> forall x, { y & { k & f x k = Some y } }.
+Proof.
+  intros H x.
+  enough ({ t | let (y, k) := unembed t in f x k = Some y }) as [t Ht] by (destruct unembed; eauto).
+  apply mu.
+  - intros x'. destruct unembed.
+    unfold dec. repeat decide equality.
+  - destruct (H x) as (k & y & Hky).
+    exists (embed (y, k)). rewrite embedP. assumption.
 Qed.
 
 Theorem weakPost X (p : X -> Prop) :
@@ -34,12 +42,11 @@ Qed.
 Class FS : Type := mkFS { sentences : Type
                     ; neg : sentences -> sentences
                     ; sentences_discrete : discrete sentences
-                    ; sentences_enumerable : tenumerable sentences
+                    ; sentences_enumerable : enumerable__T sentences
                     ; provable : sentences -> Prop
                     ; provable_enumerable : enumerable provable
                     ; consistent : forall s, provable s -> provable (neg s) -> False }.
-(* TODO is there syntax for non-implicit arguments? why is s taken implicitly here? *)
-Arguments consistent {_} _ _ _.
+Arguments consistent {_} _ _.
 
 Definition completeness {fs : FS} := forall s, provable s \/ provable (neg s).
 
@@ -63,14 +70,19 @@ Section facts.
 
   Lemma undeepen_provability s : completeness -> ~provable s -> provable (neg s).
   Proof.
-    intros complete Hnprov. now destruct (complete s).
+    firstorder.
   Qed.
   Lemma deepen_provability s : provable (neg s) -> ~provable s.
   Proof.
-    intros Hprovn Hnprov. apply (consistent s); eassumption.
+    eauto using consistent.
   Qed.
 
-  Lemma ldecidable_provable : completeness -> ldecidable provable.
+  Lemma deep_provability_iff s : completeness -> (provable (neg s) <-> ~provable s).
+  Proof.
+    firstorder using undeepen_provability, deepen_provability.
+  Qed.
+
+  Lemma provable_ldecidable : completeness -> ldecidable provable.
   Proof.
     intros complete s. destruct (complete s); firstorder using consistent.
   Qed.
@@ -79,14 +91,14 @@ Section facts.
   Proof.
     destruct provable_enumerable as [provable_enumerator provable_enumerable].
     destruct sentences_enumerable as [sentences_enumerator sentences_enumerable].
-    pose proof sentences_discrete as [sentences_discrete]%discrete_iff.
+    pose proof sentences_discrete as [sentences_eqdec]%discrete_iff.
 
     intros complete.
     unshelve eexists.
     { intros [k1 k2] % unembed.
       destruct (provable_enumerator k1) as [p|]. 2: exact None.
       destruct (sentences_enumerator k2) as [s|]. 2: exact None.
-      destruct (sentences_discrete p (neg s)).
+      destruct (sentences_eqdec p (neg s)).
       - exact (Some s).
       - exact None. }
     intros s. split.
@@ -95,24 +107,24 @@ Section facts.
       destruct (sentences_enumerable s) as [k2 Hk2].
       exists (embed (k1, k2)). rewrite embedP. cbn.
       destruct provable_enumerator, sentences_enumerator. 2-4: discriminate.
-      destruct sentences_discrete; congruence.
+      destruct sentences_eqdec; congruence.
     - intros [k Hk].
       destruct (unembed k) as [k1 k2]. cbn in Hk.
       destruct (provable_enumerator k1) eqn:H, (sentences_enumerator k2). 2-4: discriminate.
-      destruct sentences_discrete as [Heq|?]. 2: discriminate.
-      apply deepen_provability. apply provable_enumerable. exists k1.
+      destruct sentences_eqdec. 2: discriminate.
+      apply deepen_provability, provable_enumerable. exists k1.
       congruence.
   Qed.
-  Lemma decidable_provable : completeness -> decidable provable.
+  Lemma provable_decidable : completeness -> decidable provable.
   Proof.
     intros complete.
     apply weakPost.
     - exact sentences_discrete.
-    - apply ldecidable_provable, complete.
+    - apply provable_ldecidable, complete.
     - exact provable_enumerable.
     - apply provable_coenumerable, complete.
   Qed.
-
+  (* TODO to apply totalize we need an embedding fomr sentences into nat, which is equivalent (?) to enumerability *)
 End facts.
 
 From Undecidability.FOL.Util Require Import Syntax_facts FullDeduction FullDeduction_facts FullTarski FullTarski_facts Axiomatisations.
@@ -125,10 +137,8 @@ Module instantiation.
     Hypothesis (preds_eq_dec : eq_dec preds) (preds_enumerable : enumerable__T preds).
 
     Context {peirce : peirce}.
-
-    (* It suffices to talk about finite extensions here for the purposes
-       of talking about Q because of compactness *)
     Context (T : form -> Prop) (T_enumerable : enumerable T).
+
     Hypothesis consistent : ~ T ⊢T ⊥.
 
 
@@ -196,19 +206,20 @@ Module instantiation.
     Lemma provable_enumerable : enumerable provable.
     Proof.
       unfold provable.
-      assert (enumerable (fun phi => T ⊢T phi)) as [f Hf] by now unshelve eapply tprv_enumerable.
+      assert (enumerable (fun phi => T ⊢T phi)) as [f Hf]
+          by now unshelve eapply tprv_enumerable.
       unshelve eexists.
       - intros k. destruct (f k) as [phi|]. 2: exact None.
         destruct (closed_dec phi).
         + left. now exists phi.
         + exact None.
       - intros [phi Hphi]. split; cbn.
-        + intros [k Hk]%(Hf phi). exists k.
+        + intros [k Hk]%Hf. exists k.
           destruct (f k). 2: congruence.
-          destruct closed_dec; subst.
-          * injection Hk. intros. subst.
-            repeat f_equal. apply closed_mere.
-          * injection Hk. intros. subst. congruence.
+          injection Hk as ->.
+          destruct closed_dec.
+          * repeat f_equal. apply closed_mere.
+          * contradiction.
         + intros [k Hk].
           destruct (f k) eqn:H. 2: congruence.
           destruct closed_dec. 2: congruence.
@@ -246,5 +257,9 @@ Module instantiation.
   End instantiation.
 End instantiation.
 Definition fs_fo := instantiation.fs_fo.
-Check fs_fo.
 
+From Undecidability.FOL.Util Require Import Syntax_facts FullDeduction FullDeduction_facts FullTarski FullTarski_facts Axiomatisations.
+From Undecidability.FOL Require Import PA.
+
+Definition Q := list_theory Qeq.
+Check forall (T : form -> Prop), Q <<= T -> ~(T ⊢TC ⊥) -> exists phi, ~(T ⊢TC phi) /\ ~(T ⊢TC ¬phi).

@@ -275,6 +275,9 @@ FOL/binFST_undec.v
 FOL/Util/Axiomatisations.v
 FOL/Util/Abstract.v
 
+FOL/Incompleteness/FS.v
+FOL/Incompleteness/CT.v
+
 MinskyMachines/MMA.v            
 
 MinskyMachines/ndMM2.v          
