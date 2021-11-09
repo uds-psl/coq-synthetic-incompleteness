@@ -11,8 +11,40 @@ Section CT.
   Definition CTreturns c x y := exists n, phi c x n = Some y.
   Definition CThalts c x := exists y, CTreturns c x y.
 
-  (* TODO write down halting again *)
+  Lemma CTspecial_halting_undec : ~decidable (fun d => CThalts d d).
+  Proof.
+    intros [f Hf].
+    destruct (CT (fun n _ => if f n then None else Some 1)) as [c Hc].
+    specialize (Hf c). specialize (Hc c).
+    destruct (f c).
+    - enough (CThalts c c) as (?&?&?) by congruence.
+      now apply Hf.
+    - enough (false = true) by congruence.
+      apply Hf. now exists 1, 0.
+  Qed.
 
+  Section CThalt.
+    Variable fs : FS.
+    Hypothesis provable_decidable : decidable provable.
+
+    Variable wrepr : nat -> nat -> sentences.
+    Hypothesis Hwrepr : forall (c x : nat), CThalts c x <-> provable (wrepr c x).
+
+    Lemma CTwrepr_dec : decidable (fun '(c, x) => CThalts c x).
+    Proof.
+      destruct provable_decidable as [f Hf].
+      exists (fun '(c, x) => f (wrepr c x)).
+      intros [c x]. unfold reflects.
+      rewrite Hwrepr. apply Hf.
+    Qed.
+
+    Lemma CTwrepr : False.
+    Proof.
+      apply CTspecial_halting_undec.
+      destruct (CTwrepr_dec) as [f Hf].
+      exists (fun d => f (d, d)). firstorder.
+    Qed.
+  End CThalt.
 
 
   Definition CGpred (p : nat -> nat -> Prop) := forall c x,
@@ -80,7 +112,7 @@ Section CT.
         1: exact (Some true).
         destruct (sentences_eqdec p (neg(repr c x 0))).
         - exact (Some false).
-        - exact None.}
+        - exact None. }
 
       unshelve evar (g : nat -> nat -> option nat).
       {
@@ -112,5 +144,3 @@ Section CT.
     Qed.
   End CTexpl.
 End CT.
-
-Check CGexpl.
