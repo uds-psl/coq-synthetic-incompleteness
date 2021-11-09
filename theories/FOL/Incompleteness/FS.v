@@ -8,23 +8,17 @@ Require Import ConstructiveEpsilon.
 Local Set Implicit Arguments.
 Local Unset Strict Implicit.
 
+Lemma decidable_equiv X p q : (forall (x : X), p x <-> q x) -> decidable p -> decidable q.
+Proof.
+  firstorder.
+Qed.
+
 Definition ldecidable X (p : X -> Prop) := forall x, p x \/ ~p x.
 
 Definition mu (p : nat -> Prop) :
   (forall x, dec (p x)) -> ex p -> sig p.
 Proof.
   apply constructive_indefinite_ground_description_nat_Acc.
-Qed.
-
-Lemma totalize (f : nat -> nat -> option nat) : (forall x, exists k y, f x k = Some y) -> forall x, { y & { k & f x k = Some y } }.
-Proof.
-  intros H x.
-  enough ({ t | let (y, k) := unembed t in f x k = Some y }) as [t Ht] by (destruct unembed; eauto).
-  apply mu.
-  - intros x'. destruct unembed.
-    unfold dec. repeat decide equality.
-  - destruct (H x) as (k & y & Hky).
-    exists (embed (y, k)). rewrite embedP. assumption.
 Qed.
 
 Theorem weakPost X (p : X -> Prop) :
@@ -38,6 +32,58 @@ Proof.
   - decide (f n = Some x); decide (g n = Some x); firstorder.
 Qed.
 
+Definition sfunction X Y := { f : X -> nat -> option Y & forall x k k' y y', f x k = Some y -> f x k' = Some y' -> y = y' }.
+Definition stotal {X Y} (f : sfunction X Y) := forall x, exists k y, projT1 f x k = Some y.
+
+Lemma totalize X (Xdis : discrete X) (Xenum : enumerable__T X) (f : sfunction X bool) :
+  stotal f -> decidable (fun x => exists k, projT1 f x k = Some true).
+Proof.
+  destruct f as [f Hfunc]. unfold stotal. cbn.
+  destruct Xenum as [Xe HXe].
+  intros Hf.
+  apply weakPost.
+  - assumption.
+  - intros x.
+    destruct (Hf x) as (k & [] & H).
+    + left. eauto.
+    + right. intros [k' Hk'].
+      specialize (Hfunc x k k' false true H Hk'). congruence.
+  - unshelve eexists.
+    { intros [k1 k2]%unembed. destruct (Xe k1) as [x|]. 2: exact None.
+      destruct (f x k2) as [[]|]. 1: exact (Some x).
+      all: exact None.
+    }
+    intros x. split.
+    + intros [k2 Hk2].
+      destruct (HXe x) as [k1 Hk1].
+      exists (embed (k1, k2)).
+      rewrite embedP. cbn.
+      now rewrite Hk1, Hk2.
+    + intros [k Hk].
+      destruct (unembed k) as [k1 k2]. cbn in Hk.
+      destruct (Xe k1) as [x'|]. 2: congruence.
+      destruct (f x' k2) as [[]|] eqn:H. 2,3: congruence.
+      exists k2. congruence.
+  - unshelve eexists.
+    { intros [k1 k2]%unembed. destruct (Xe k1) as [x|]. 2: exact None.
+      destruct (f x k2) as [[]|]. 2: exact (Some x).
+      all: exact None.
+    }
+    intros x. split.
+    + intros Hn.
+      destruct (Hf x) as (k2 & b & Hk2).
+      destruct b.
+      1: { exfalso. eauto. }
+      destruct (HXe x) as [k1 Hk1].
+      exists (embed (k1, k2)).
+      rewrite embedP. cbn. now rewrite Hk1, Hk2.
+    + intros [k Hk] [k' Hk'].
+      destruct (unembed k) as [k1 k2]. cbn in Hk.
+      destruct (Xe k1) as [x'|]. 2: congruence.
+      destruct (f x' k2) as [[]|] eqn:H. 1, 3: congruence.
+      injection Hk as ->.
+      specialize (Hfunc x k' k2 true false Hk' H). congruence.
+Qed.
 
 Class FS : Type := mkFS { sentences : Type
                     ; neg : sentences -> sentences
@@ -86,6 +132,54 @@ Section facts.
   Proof.
     intros complete s. destruct (complete s); firstorder using consistent.
   Qed.
+
+  (*Definition provable_dec_func
+             (prov : nat -> option sentences) (prov_enum : enumerator prov provable)
+             (sent_eqdec : forall (s1 s2 : sentences), {s1 = s2} + {s1 <> s2}): sfunction sentences bool.
+  Proof.
+    unshelve eexists.
+    {
+      intros s k.
+      destruct (prov k) as [s'|]. 2: exact None.
+      destruct (sent_eqdec s s'). 1: exact (Some true).
+      destruct (sent_eqdec (neg s) s'). 1: exact (Some false).
+      exact None.
+    }
+    intros x k k' y y'. cbn.
+    destruct (prov k) as [s|] eqn:Hk, (prov k') as [s'|] eqn:Hk'; try congruence.
+    repeat destruct sent_eqdec; try congruence.
+    - subst. exfalso. apply (consistent s); apply prov_enum; eauto.
+    - subst. exfalso. apply (consistent s'); apply prov_enum; eauto.
+  Defined.
+
+  Lemma provable_decidable : completeness -> decidable provable.
+  Proof.
+    intros complete.
+
+    destruct provable_enumerable as [prov Hprov].
+    pose proof sentences_discrete as sent_eqdec. apply discrete_iff in sent_eqdec as [sent_eqdec].
+    pose (f := @provable_dec_func prov Hprov sent_eqdec).
+    enough (decidable (fun x => exists k, projT1 f x k = Some true)).
+    { eapply decidable_equiv. 2: exact H.
+      intros s. split.
+      - intros [k Hk].
+        cbn in Hk.
+        destruct prov eqn:H'. 2: congruence.
+        repeat destruct sent_eqdec; subst; try congruence.
+        apply Hprov. eauto.
+      - intros [k Hk] % Hprov. exists k. cbn. rewrite Hk.
+        now destruct sent_eqdec.
+    }
+    apply totalize.
+    - exact sentences_discrete.
+    - exact sentences_enumerable.
+    - intros s.
+      destruct (complete s) as [[k Hk]%Hprov|[k Hk]%Hprov].
+      + exists k, true. cbn. rewrite Hk. now destruct sent_eqdec.
+      + exists k, false. cbn. rewrite Hk. destruct sent_eqdec as [Heq|Heq].
+        * destruct (neg_no_fixpoint_comp complete Heq).
+        * now destruct sent_eqdec.
+  Qed.*)
 
   Lemma provable_coenumerable : completeness -> enumerable (fun s => ~provable s).
   Proof.
