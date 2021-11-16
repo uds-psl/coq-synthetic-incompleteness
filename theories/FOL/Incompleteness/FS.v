@@ -181,34 +181,39 @@ Section facts.
         * now destruct sent_eqdec.
   Qed.*)
 
+  Lemma enumerable_equiv X (P Q : X -> Prop) :
+    (forall x, P x <-> Q x) -> enumerable P -> enumerable Q.
+  Proof.
+    intros H [f Hf]. exists f. intros x. rewrite <- H. apply Hf.
+  Qed.
   Lemma provable_coenumerable : completeness -> enumerable (fun s => ~provable s).
   Proof.
-    destruct provable_enumerable as [provable_enumerator provable_enumerable].
-    destruct sentences_enumerable as [sentences_enumerator sentences_enumerable].
-    pose proof sentences_discrete as [sentences_eqdec]%discrete_iff.
-
     intros complete.
+    apply enumerable_equiv with (P := (fun s => provable (neg (s)))).
+    1: auto using deep_provability_iff.
+    apply semi_decidable_enumerable. 1: exact sentences_enumerable.
+    unfold semi_decidable, semi_decider.
+
+    destruct provable_enumerable as [provable_enumerator provable_enumerable].
+    pose proof sentences_discrete as [sentences_eqdec]%discrete_iff.
     unshelve eexists.
-    { intros [k1 k2] % unembed.
-      destruct (provable_enumerator k1) as [p|]. 2: exact None.
-      destruct (sentences_enumerator k2) as [s|]. 2: exact None.
-      destruct (sentences_eqdec p (neg s)).
-      - exact (Some s).
-      - exact None. }
+    {
+      intros s k.
+      destruct (provable_enumerator k) as [p|]. 2: exact false.
+      destruct (sentences_eqdec (neg s) p).
+      - exact true.
+      - exact false.
+    }
     intros s. split.
-    - intros Hprov.
-      apply undeepen_provability, provable_enumerable in Hprov as [k1 Hk1]. 2: assumption.
-      destruct (sentences_enumerable s) as [k2 Hk2].
-      exists (embed (k1, k2)). rewrite embedP. cbn.
-      destruct provable_enumerator, sentences_enumerator. 2-4: discriminate.
-      destruct sentences_eqdec; congruence.
-    - intros [k Hk].
-      destruct (unembed k) as [k1 k2]. cbn in Hk.
-      destruct (provable_enumerator k1) eqn:H, (sentences_enumerator k2). 2-4: discriminate.
-      destruct sentences_eqdec. 2: discriminate.
-      apply deepen_provability, provable_enumerable. exists k1.
-      congruence.
+    - intros [k Hk]%provable_enumerable.
+      exists k. rewrite Hk. cbn.
+      now destruct sentences_eqdec.
+    - intros [k Hk]. cbn in Hk.
+      destruct (provable_enumerator) eqn:Heq. 2: congruence.
+      destruct sentences_eqdec. 2: congruence.
+      apply provable_enumerable. exists k. congruence.
   Qed.
+
   Lemma provable_decidable : completeness -> decidable provable.
   Proof.
     intros complete.

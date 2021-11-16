@@ -2,25 +2,123 @@ From Undecidability.FOL.Incompleteness Require Import FS.
 From Undecidability.Synthetic Require Import DecidabilityFacts EnumerabilityFacts ReducibilityFacts.
 From Undecidability.Shared Require Import Dec embed_nat.
 
+Require Import Lia.
 
+
+Definition stationary {X} (f : nat -> option X) := forall k k' y, f k = Some y -> k' >= k -> f k' = Some y.
+Definition part X := { p : nat -> option X | stationary p }.
+Definition part_returns {X} (p : part X) y := exists k, proj1_sig p k = Some y.
+Definition pfunc_equiv {X Y} (f g : X -> part Y) := forall x y, part_returns (f x) y <-> part_returns (g x) y.
+
+Definition mkstat {X} (f : nat -> option X) : nat -> option X :=
+  fix g k := match k with
+            | 0 => f 0
+            | S k => match g k with
+                    | None => f (S k)
+                    | Some x => Some x
+                    end
+            end.
+
+Lemma mkstat_stationary {X} (f : nat -> option X) : stationary (mkstat f).
+Proof.
+  intros k k' y. revert k'. induction k; intros k'.
+  - intros H0. induction k'.
+    + easy.
+    + intros ?. cbn. rewrite IHk'.
+      * reflexivity.
+      * lia.
+  - cbn. destruct (mkstat f k) eqn:Heq.
+    + intros [= ->]. induction k'.
+      * lia.
+      * intros H. cbn.
+        assert (k' = k \/ k' > k) as [->|H1] by lia.
+        -- now rewrite Heq.
+        -- rewrite IHk'.  2: lia.
+           reflexivity.
+    + intros Heq'. induction k'.
+      * lia.
+      * intros H. cbn.
+        assert (k' = k \/ k' > k) as [->|H1] by lia.
+        -- now rewrite Heq.
+        -- rewrite IHk'. 2: lia.
+           reflexivity.
+Qed.
+Lemma stationize {X} (f : nat -> nat -> option X) :
+  (forall x k1 k2 y1 y2, f x k1 = Some y1 -> f x k2 = Some y2 -> y1 = y2) -> exists g, (forall x, stationary (g x)) /\ forall x y, (exists k, g x k = Some y) <-> (exists k, f x k = Some y).
+Proof.
+Admitted.
 
 Section CT.
-  Variable phi : nat -> nat -> nat -> option nat.
-  Hypothesis CT : forall (f : nat -> nat -> option nat), exists c, forall x k, phi c x k = f x k.
+  Definition phi_universal (phi : nat -> nat -> part nat) :=
+    forall (f : nat -> nat), exists c, forall x, part_returns (phi c x) (f x).
 
-  Definition CTreturns c x y := exists n, phi c x n = Some y.
+  Definition theta_universal (theta : nat -> nat -> part nat) :=
+    forall (f : nat -> part nat), exists c, pfunc_equiv f (theta c).
+
+
+
+  Lemma phi_theta : (exists phi, phi_universal phi) <-> (exists theta, theta_universal theta).
+  Proof.
+    split.
+    - intros (phi & Huniv).
+      unshelve evar (theta : nat -> nat -> part nat).
+      {
+        intros c x.
+        destruct (phi c x) as [f Hf].
+        exists (fun k => match f k with Some (S n) => Some n | _ => None end).
+        admit.
+      }
+      exists theta. intros f.
+      unshelve evar (f' : nat -> nat).
+      { intros [x k]%unembed.
+        destruct (f x) as [f' Hf'].
+        destruct (f' k).
+        - exact (S n).
+        - exact 0. }
+      destruct (Huniv f') as [c Hc].
+      exists c. intros x y. cbn in *.
+      admit.
+    - intros [theta Huniv].
+      exists theta. intros f.
+      unshelve evar (f' : nat -> part nat).
+      { intros x. exists (fun _ => Some (f x)). congruence. }
+      destruct (Huniv f') as [c Hc].
+      exists c. intros x.
+      specialize (Hc x (f x)).
+      apply Hc.
+      exists 0. reflexivity.
+  Admitted.
+
+End CT.
+
+
+
+(* TODO sigma formulation for functions from before *)
+
+Section CT.
+  Variable theta : nat -> nat -> nat -> option nat.
+  Variable theta_stationary : forall c x, stationary (theta c x).
+  Variable theta_univ :
+      forall (f : nat -> nat -> option nat),
+        (forall x, stationary (f x)) ->
+        exists c, forall x y, (exists k, f x k = Some y) <-> (exists k, theta c x k = Some y).
+  Arguments theta_univ : clear implicits.
+
+  Definition CTreturns c x y := exists n, theta c x n = Some y.
   Definition CThalts c x := exists y, CTreturns c x y.
 
   Lemma CTspecial_halting_undec : ~decidable (fun d => CThalts d d).
   Proof.
     intros [f Hf].
-    destruct (CT (fun n _ => if f n then None else Some 1)) as [c Hc].
+    destruct (theta_univ (fun n _ => if f n then None else Some 1)) as [c Hc].
+    { congruence. }
     specialize (Hf c). specialize (Hc c).
     destruct (f c).
-    - enough (CThalts c c) as (?&?&?) by congruence.
-      now apply Hf.
+    - assert (CThalts c c) as [y Hy] by firstorder.
+      assert (~CTreturns c c y) by intros [_ [=]]%Hc.
+      contradiction.
     - enough (false = true) by congruence.
-      apply Hf. now exists 1, 0.
+      apply Hf. exists 1. apply Hc. eauto.
   Qed.
 
   Section CThalt.
@@ -54,7 +152,8 @@ Section CT.
   Lemma CGpred_undec p : CGpred p -> ~exists f, forall c x, p c x <-> f c x = true.
   Proof.
     intros HCG [f Hf].
-    destruct (CT (fun c _ => if f c c then Some 1 else Some 0)) as [c Hc].
+    destruct (theta_univ (fun c _ => if f c c then Some 1 else Some 0)) as [c Hc].
+    { congruence. }
     specialize (Hc c). specialize (Hf c c). specialize (HCG c c).
     destruct (f c c); firstorder.
   Qed.
@@ -121,23 +220,29 @@ Section CT.
         - exact (Some 0).
         - exact None.
       }
+      destruct (@stationize _ g) as (g' & Hgstat & Hgcorr).
+      {
+        intros x k1 k2 y1 y2.
+        unfold g, f.
+        destruct (prov k1) eqn:Hk1, (prov k2) eqn:Hk2; try congruence.
+        repeat destruct sentences_eqdec; try congruence; subst.
+        all: destruct (consistent (repr x x 0)); apply Hprov; eauto.
+      }
 
-      destruct (CT g) as [c Hc].
+      destruct (theta_univ g' Hgstat) as [c Hc].
       exists (repr c c 0).
       split.
       - intros Hp.
         apply Hrepr with (c := c) (x := c) (y := 1) (y' := 0).
-        + unfold CTreturns.
-          apply Hprov in Hp as [k Hk].
-          exists k. rewrite Hc.
+        + apply Hprov in Hp as [k Hk].
+          apply Hc, Hgcorr. exists k.
           unfold g, f. rewrite Hk.
           destruct sentences_eqdec; congruence.
         + discriminate.
         + assumption.
       - intros Hp. unshelve eapply (consistent (repr c c 0) _ Hp).
-        apply Hrepr. apply Hprov in Hp as [k Hk].
-        exists k. rewrite Hc.
-        unfold g, f. rewrite Hk.
+        apply Hrepr, Hc, Hgcorr. apply Hprov in Hp as [k Hk].
+        exists k. unfold g, f. rewrite Hk.
         destruct sentences_eqdec.
         + destruct (@neg_no_fixpoint2 _ (repr c c 0)); firstorder.
         + now destruct sentences_eqdec.
