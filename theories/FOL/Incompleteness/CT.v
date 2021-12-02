@@ -6,9 +6,6 @@ Require Import Lia.
 
 
 Definition stationary {X} (f : nat -> option X) := forall k k' y, f k = Some y -> k' >= k -> f k' = Some y.
-Definition part X := { p : nat -> option X | stationary p }.
-Definition part_returns {X} (p : part X) y := exists k, proj1_sig p k = Some y.
-Definition pfunc_equiv {X Y} (f g : X -> part Y) := forall x y, part_returns (f x) y <-> part_returns (g x) y.
 
 Definition mkstat {X} (f : nat -> option X) : nat -> option X :=
   fix g k := match k with
@@ -43,63 +40,28 @@ Proof.
         -- rewrite IHk'. 2: lia.
            reflexivity.
 Qed.
-Lemma stationize {X} (f : nat -> nat -> option X) :
-  (forall x k1 k2 y1 y2, f x k1 = Some y1 -> f x k2 = Some y2 -> y1 = y2) -> exists g, (forall x, stationary (g x)) /\ forall x y, (exists k, g x k = Some y) <-> (exists k, f x k = Some y).
+Lemma mkstat_correct {X} (f : nat -> option X) :
+    (forall k1 k2 y1 y2, f k1 = Some y1 -> f k2 = Some y2 -> y1 = y2) ->
+    forall y, (exists k, f k = Some y) <-> (exists k, mkstat f k = Some y).
 Proof.
 Admitted.
 
-Section CT.
-  Definition phi_universal (phi : nat -> nat -> part nat) :=
-    forall (f : nat -> nat), exists c, forall x, part_returns (phi c x) (f x).
+Lemma stationize {X} (f : nat -> nat -> option X) :
+    (forall x k1 k2 y1 y2, f x k1 = Some y1 -> f x k2 = Some y2 -> y1 = y2) ->
+    exists g, (forall x, stationary (g x)) /\ forall x y, (exists k, f x k = Some y) <-> (exists k, g x k = Some y).
+Proof.
+  intros Hfunc.
+  exists (fun x => mkstat (f x)).
+  split; first (intros; apply mkstat_stationary).
+  intros x y. apply mkstat_correct, Hfunc.
+Qed.
 
-  Definition theta_universal (theta : nat -> nat -> part nat) :=
-    forall (f : nat -> part nat), exists c, pfunc_equiv f (theta c).
-
-
-
-  Lemma phi_theta : (exists phi, phi_universal phi) <-> (exists theta, theta_universal theta).
-  Proof.
-    split.
-    - intros (phi & Huniv).
-      unshelve evar (theta : nat -> nat -> part nat).
-      {
-        intros c x.
-        destruct (phi c x) as [f Hf].
-        exists (fun k => match f k with Some (S n) => Some n | _ => None end).
-        admit.
-      }
-      exists theta. intros f.
-      unshelve evar (f' : nat -> nat).
-      { intros [x k]%unembed.
-        destruct (f x) as [f' Hf'].
-        destruct (f' k).
-        - exact (S n).
-        - exact 0. }
-      destruct (Huniv f') as [c Hc].
-      exists c. intros x y. cbn in *.
-      admit.
-    - intros [theta Huniv].
-      exists theta. intros f.
-      unshelve evar (f' : nat -> part nat).
-      { intros x. exists (fun _ => Some (f x)). congruence. }
-      destruct (Huniv f') as [c Hc].
-      exists c. intros x.
-      specialize (Hc x (f x)).
-      apply Hc.
-      exists 0. reflexivity.
-  Admitted.
-
-End CT.
-
-
-
-(* TODO sigma formulation for functions from before *)
 
 Section CT.
-  Variable theta : nat -> nat -> nat -> option nat.
+  Variable theta : nat -> nat -> nat -> option bool.
   Variable theta_stationary : forall c x, stationary (theta c x).
   Variable theta_univ :
-      forall (f : nat -> nat -> option nat),
+      forall (f : nat -> nat -> option bool),
         (forall x, stationary (f x)) ->
         exists c, forall x y, (exists k, f x k = Some y) <-> (exists k, theta c x k = Some y).
   Arguments theta_univ : clear implicits.
@@ -110,15 +72,15 @@ Section CT.
   Lemma CTspecial_halting_undec : ~decidable (fun d => CThalts d d).
   Proof.
     intros [f Hf].
-    destruct (theta_univ (fun n _ => if f n then None else Some 1)) as [c Hc].
-    { congruence. }
+    destruct (theta_univ (fun n _ => if f n then None else Some true)) as [c Hc].
+    1: congruence.
     specialize (Hf c). specialize (Hc c).
     destruct (f c).
     - assert (CThalts c c) as [y Hy] by firstorder.
       assert (~CTreturns c c y) by intros [_ [=]]%Hc.
       contradiction.
     - enough (false = true) by congruence.
-      apply Hf. exists 1. apply Hc. eauto.
+      apply Hf. exists true. apply Hc. eauto.
   Qed.
 
   Section CThalt.
@@ -145,57 +107,55 @@ Section CT.
   End CThalt.
 
 
-  Definition CGpred (p : nat -> nat -> Prop) := forall c x,
-      (CTreturns c x 0 -> p c x) /\
-        (CTreturns c x 1 -> ~p c x).
+  Definition CGfunc (f : nat -> nat -> bool) := forall c x y,
+      (CTreturns c x y -> f c x = y).
 
-  Lemma CGpred_undec p : CGpred p -> ~exists f, forall c x, p c x <-> f c x = true.
+  Lemma CG_undec : ~exists f, CGfunc f.
   Proof.
-    intros HCG [f Hf].
-    destruct (theta_univ (fun c _ => if f c c then Some 1 else Some 0)) as [c Hc].
+    intros [f Hf].
+    destruct (theta_univ (fun c _ => Some (negb (f c c)))) as [c Hc].
     { congruence. }
-    specialize (Hc c). specialize (Hf c c). specialize (HCG c c).
-    destruct (f c c); firstorder.
+    specialize (Hc c). specialize (Hf c c).
+    destruct (f c c).
+    - enough (true = false) by discriminate.
+      apply Hf, Hc. eauto.
+    - enough (false = true) by discriminate.
+      apply Hf, Hc. eauto.
   Qed.
 
   Section CTguess.
     Variable fs : FS.
     Hypothesis provable_decidable : decidable provable.
 
-    (* TODO check how this notion of representability turns up in Kleene *)
-    Variable repr : nat -> nat -> nat -> sentences.
-    Hypothesis Hrepr : forall (c x y : nat),
-        (CTreturns c x y -> provable (repr c x y)) /\
-          forall y', CTreturns c x y -> y <> y' -> ~provable ((repr c x y')).
+    Variable repr : nat -> nat -> bool -> sentences.
+    Hypothesis Hrepr : forall c x y,
+        CTreturns c x y -> provable (repr c x y) /\ provable (neg (repr c x (negb y))).
+    Arguments Hrepr : clear implicits.
 
-    Lemma CGpred_dec : exists f p, CGpred p /\ forall c x, p c x <-> f c x = true.
+    Lemma CG_dec : exists f, CGfunc f.
     Proof.
       apply decidable_iff in provable_decidable as [prov_dec].
-      exists (fun c x => if prov_dec (repr c x 0) then true else false).
-      exists (fun c x => if prov_dec (repr c x 0) then True else False).
-      split.
-      - intros c x. split.
-        + intros Hprov % Hrepr. now destruct prov_dec.
-        + intros Hret ?. destruct prov_dec. 2: easy.
-          destruct (Hrepr c x 1) as [_ Hfunc].
-          now apply (Hfunc 0).
-      - intros c x. destruct prov_dec; easy.
+      exists (fun c x => if prov_dec (repr c x true) then true else false).
+      intros c x [] Hret; destruct prov_dec as [H|H].
+      - reflexivity.
+      - contradict H. apply Hrepr, Hret.
+      - destruct (consistent (repr c x (negb false))); intuition.
+      - reflexivity.
     Qed.
 
     Lemma CTrepr : False.
     Proof.
-      destruct CGpred_dec as (f & p & HCG & Hdec).
-      apply (CGpred_undec HCG); eauto.
+      apply CG_undec, CG_dec.
     Qed.
   End CTguess.
+
 
   Section CTexpl.
     Variable fs : FS.
 
-    Variable repr : nat -> nat -> nat -> sentences.
-    Hypothesis Hrepr : forall (c x y : nat),
-        (CTreturns c x y -> provable (repr c x y)) /\
-          forall y', CTreturns c x y -> y <> y' -> ~provable ((repr c x y')).
+    Variable repr : nat -> nat -> bool -> sentences.
+    Hypothesis Hrepr : forall c x y,
+        CTreturns c x y -> provable (repr c x y) /\ provable (neg (repr c x (negb y))).
 
     Lemma CGexpl : exists s, ~provable s /\ ~provable (neg s).
     Proof.
@@ -207,17 +167,16 @@ Section CT.
       { intros c x k.
         destruct (prov k) as [p|]. 2: exact None.
 
-        destruct (sentences_eqdec p (repr c x 0)).
+        destruct (sentences_eqdec p (repr c x true)).
         1: exact (Some true).
-        destruct (sentences_eqdec p (neg(repr c x 0))).
+        destruct (sentences_eqdec p (neg(repr c x true))).
         - exact (Some false).
         - exact None. }
 
-      unshelve evar (g : nat -> nat -> option nat).
+      unshelve evar (g : nat -> nat -> option bool).
       {
-        intros c k. destruct (f c c k) as [[]|].
-        - exact (Some 1).
-        - exact (Some 0).
+        intros c k. destruct (f c c k) as [b|].
+        - exact (Some (negb b)).
         - exact None.
       }
       destruct (@stationize _ g) as (g' & Hgstat & Hgcorr).
@@ -226,26 +185,110 @@ Section CT.
         unfold g, f.
         destruct (prov k1) eqn:Hk1, (prov k2) eqn:Hk2; try congruence.
         repeat destruct sentences_eqdec; try congruence; subst.
-        all: destruct (consistent (repr x x 0)); apply Hprov; eauto.
+        all: destruct (consistent (repr x x true)); apply Hprov; eauto.
       }
 
       destruct (theta_univ g' Hgstat) as [c Hc].
-      exists (repr c c 0).
+      exists (repr c c true).
       split.
       - intros Hp.
-        apply Hrepr with (c := c) (x := c) (y := 1) (y' := 0).
-        + apply Hprov in Hp as [k Hk].
-          apply Hc, Hgcorr. exists k.
-          unfold g, f. rewrite Hk.
-          destruct sentences_eqdec; congruence.
-        + discriminate.
-        + assumption.
-      - intros Hp. unshelve eapply (consistent (repr c c 0) _ Hp).
-        apply Hrepr, Hc, Hgcorr. apply Hprov in Hp as [k Hk].
+        eapply consistent; first exact Hp.
+        apply Hprov in Hp as [k Hk].
+        apply Hrepr with (y := false), Hc, Hgcorr.
+        exists k. unfold g, f. rewrite Hk.
+        destruct sentences_eqdec; cbn; congruence.
+      - intros Hp. apply (consistent (repr c c true)); last assumption.
+        apply Hprov in Hp as [k Hk].
+        apply Hrepr, Hc, Hgcorr.
         exists k. unfold g, f. rewrite Hk.
         destruct sentences_eqdec.
-        + destruct (@neg_no_fixpoint2 _ (repr c c 0)); firstorder.
+        + destruct (@neg_no_fixpoint2 _ (repr c c true)); firstorder.
         + now destruct sentences_eqdec.
     Qed.
   End CTexpl.
 End CT.
+
+Section CTrepr.
+  Variable fs : FS.
+
+  Definition weakRepr (P : nat -> Prop) :=
+    exists (repr : nat -> sentences), forall x, P x <-> provable (repr x).
+  Definition valueRepr (f : nat -> nat -> option bool) :=
+    exists (repr : nat -> bool -> sentences),
+    forall x y, (exists k, f x k = Some y) -> provable (repr x y) /\ provable (neg (repr x (negb y))).
+
+  Lemma complete_repr_weak_value f : (forall x, stationary (f x)) -> 
+    completeness -> weakRepr (fun x => exists k, f x k = Some true) -> valueRepr f.
+  Proof.
+    intros Hstat complete [repr Hrepr].
+    exists ((fun x (b : bool) => if b then repr x else neg (repr x))).
+    intros x [] [k1 Hk1]; split; cbn.
+    - firstorder.
+    - destruct (complete (neg (repr x))); last easy.
+      exfalso.
+      eapply (deepen_provability); first exact H.
+      apply Hrepr. eauto.
+    - apply deep_provability_iff; first assumption.
+      intros [k2 Hk2]%Hrepr.
+      destruct (Compare_dec.le_ge_dec k1 k2) as [Hk|Hk].
+      + specialize (Hstat x k1 k2 false Hk1 Hk). congruence.
+      + specialize (Hstat x k2 k1 true Hk2 Hk). congruence.
+    - apply deep_provability_iff; first exact complete.
+      intros [k2 Hk2]%Hrepr.
+      destruct (Compare_dec.le_ge_dec k1 k2) as [Hk|Hk].
+      + specialize (Hstat x k1 k2 false Hk1 Hk). congruence.
+      + specialize (Hstat x k2 k1 true Hk2 Hk). congruence.
+  Qed.
+
+  (* weakRepr -/> valueRepr in above sense: choose FS neg s := \False which is unprovable*)
+  (* Can we do it without choosing FS? Maybe not, we need a more concrete idea on how general of a theorem we want to show (arbitraty FS? f? instead of existence of counter-examples) *)
+  (* valueRepr -/> weakRepr: does not hold, although proving this (in Coq?) is
+     going to be difficult *)
+  (* Idea: we need to encode a hard (TM) problem into the inputs there valueRepr is free to do anything and choose provability such that semi-deciding provability already leads to a contradiction *)
+  (* We _will_ have to do something related to computability because otherwise weak representability could just decide by itself whether p holds and return apropriatly *)
+
+End CTrepr.
+
+From Undecidability.FOL.Util Require Import Syntax_facts FullDeduction FullDeduction_facts FullTarski FullTarski_facts Axiomatisations.
+From Undecidability.FOL Require Import PA.
+
+Definition Q := list_theory Qeq.
+
+Instance Qfs : FS.
+Proof.
+  eapply fs_fo with (T := Q).
+  - Check List.nth.
+  - intros x y. decide equality.
+  - admit.
+  - intros x y. decide equality.
+  - admit.
+  - admit.
+Admitted.
+
+Section Qexpl.
+  Variable theta : nat -> nat -> nat -> option bool.
+  Variable theta_stationary : forall c x, stationary (theta c x).
+  Variable theta_univ :
+      forall (f : nat -> nat -> option bool),
+        (forall x, stationary (f x)) ->
+        exists c, forall x y, (exists k, f x k = Some y) <-> (exists k, theta c x k = Some y).
+  Arguments theta_univ : clear implicits.
+  
+  Context {peirce : peirce}.
+
+  Hypothesis Hrepr : forall (f : nat -> nat -> option bool), (forall x, stationary (f x)) ->
+    { repr : nat -> bool -> form | forall x y, (exists k, f x k = Some y) -> 
+      Q ⊢T repr x y /\ Q ⊢T ¬repr x (negb y) }.
+
+
+
+  Lemma Qexpl : exists φ, ~Q ⊢T φ \/ ~Q ⊢T ¬φ.
+  Proof.
+    Check CGexpl.
+    unshelve edestruct CGexpl with (theta := theta) (fs := Qfs).
+    - intros c x y.
+      destruct (@Hrepr (theta c) (@theta_stationary c)) as [r Hr].
+      unfold sentences. destruct Qfs.
+      exists (r x y).
+
+End Qexpl.
