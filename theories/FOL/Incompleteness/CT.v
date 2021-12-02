@@ -44,6 +44,26 @@ Lemma mkstat_correct {X} (f : nat -> option X) :
     (forall k1 k2 y1 y2, f k1 = Some y1 -> f k2 = Some y2 -> y1 = y2) ->
     forall y, (exists k, f k = Some y) <-> (exists k, mkstat f k = Some y).
 Proof.
+  intros Hf x. split; intros [k Hk].
+  - enough (mkstat f k = Some x \/ forall k', k' <= k -> f k' = None).
+    { destruct (H) as [H' | H'].
+      - eauto.
+      - specialize (H' k (le_n _)). congruence.
+    }
+    induction k.
+    + now left.
+    + destruct (f k) as [y|] eqn:Heq.
+      * destruct IHk as [H|H].
+        -- f_equal. eapply Hf; eassumption.
+        -- left. cbn. now rewrite H.
+        -- specialize (H k (le_n _)). congruence.
+      * 
+  - induction k.
+    + now exists 0.
+    + cbn in Hk.
+      destruct (mkstat f k) as [y|].
+      * apply IHk, Hk.
+      * now exists (S k).
 Admitted.
 
 Lemma stationize {X} (f : nat -> nat -> option X) :
@@ -127,19 +147,20 @@ Section CT.
     Variable fs : FS.
     Hypothesis provable_decidable : decidable provable.
 
-    Variable repr : nat -> nat -> bool -> sentences.
-    Hypothesis Hrepr : forall c x y,
-        CTreturns c x y -> provable (repr c x y) /\ provable (neg (repr c x (negb y))).
+    (*Hypothesis Hrepr : forall (f : nat -> nat -> option bool), exists (repr : nat -> bool -> sentences),
+        forall x y, (exists k, f x k = Some y) -> provable (repr x y) /\ provable (neg (repr x (negb y))).*)
+    Hypothesis Hrepr : forall c, { repr : nat -> bool -> sentences &
+        forall x y, CTreturns c x y -> provable (repr x y) /\ provable (neg (repr x (negb y))) }.
     Arguments Hrepr : clear implicits.
 
     Lemma CG_dec : exists f, CGfunc f.
     Proof.
       apply decidable_iff in provable_decidable as [prov_dec].
-      exists (fun c x => if prov_dec (repr c x true) then true else false).
-      intros c x [] Hret; destruct prov_dec as [H|H].
+      exists (fun c x => if prov_dec (projT1 (Hrepr c) x true) then true else false).
+      intros c x [] Hret; destruct prov_dec as [H|H]; destruct (Hrepr c) as [r Hr]; cbn in H.
       - reflexivity.
-      - contradict H. apply Hrepr, Hret.
-      - destruct (consistent (repr c x (negb false))); intuition.
+      - contradict H. apply Hr, Hret.
+      - destruct (consistent (r x (negb false))); intuition.
       - reflexivity.
     Qed.
 
