@@ -5,40 +5,50 @@ From Undecidability.Shared Require Import Dec embed_nat.
 Require Import Lia.
 
 
+Notation "'Sigma' x .. y , p" :=
+  (sigT (fun x => .. (sigT (fun y => p)) ..))
+    (at level 200, x binder, right associativity,
+     format "'[' 'Sigma'  '/  ' x  ..  y ,  '/  ' p ']'")
+  : type_scope.
+
 Definition stationary {X} (f : nat -> option X) := forall k k' y, f k = Some y -> k' >= k -> f k' = Some y.
 
 Definition mkstat {X} (f : nat -> option X) : nat -> option X :=
   fix g k := match k with
             | 0 => f 0
-            | S k => match g k with
-                    | None => f (S k)
+            | S k => match f (S k) with
+                    | None => g k
                     | Some x => Some x
                     end
             end.
 
-Lemma mkstat_stationary {X} (f : nat -> option X) : stationary (mkstat f).
+Lemma mkstat_exists {X} (f : nat -> option X)  :
+  (forall k1 k2 y1 y2, f k1 = Some y1 -> f k2 = Some y2 -> y1 = y2) ->
+    forall k x, mkstat f k = Some x -> exists k', f k' = Some x.
 Proof.
-  intros k k' y. revert k'. induction k; intros k'.
-  - intros H0. induction k'.
-    + easy.
-    + intros ?. cbn. rewrite IHk'.
-      * reflexivity.
-      * lia.
-  - cbn. destruct (mkstat f k) eqn:Heq.
-    + intros [= ->]. induction k'.
-      * lia.
-      * intros H. cbn.
-        assert (k' = k \/ k' > k) as [->|H1] by lia.
-        -- now rewrite Heq.
-        -- rewrite IHk'.  2: lia.
-           reflexivity.
-    + intros Heq'. induction k'.
-      * lia.
-      * intros H. cbn.
-        assert (k' = k \/ k' > k) as [->|H1] by lia.
-        -- now rewrite Heq.
-        -- rewrite IHk'. 2: lia.
-           reflexivity.
+  intros Hf. induction k; first eauto.
+  cbn. destruct (f (S k)) as [x|] eqn:Heq. 
+  - intros y [= ->]. eauto.
+  - eauto. 
+Qed.
+
+Lemma mkstat_stationary {X} (f : nat -> option X) : 
+  (forall k1 k2 y1 y2, f k1 = Some y1 -> f k2 = Some y2 -> y1 = y2) ->
+  stationary (mkstat f).
+Proof.
+  intros Hf k k' y.
+  induction k in k' |-*.
+  - intros H _. induction k'; first assumption.
+    cbn. destruct (f (S k')) eqn:Heq; first f_equal; eauto.
+  - cbn. intros H. induction k'; first lia. 
+    cbn. intros Hk. destruct (f (S k')) eqn:Heq.
+    + destruct (f (S k)) eqn:Heq'.
+      * rewrite <-H. f_equal. eauto.
+      * apply mkstat_exists in H as [j Hj]; last assumption.
+        f_equal. eauto.
+    + assert (k' = k \/ S k' > S k) as [->|H1] by lia.
+      * rewrite Heq in H. assumption.
+      * apply IHk'. lia.
 Qed.
 Lemma mkstat_correct {X} (f : nat -> option X) :
     (forall k1 k2 y1 y2, f k1 = Some y1 -> f k2 = Some y2 -> y1 = y2) ->
@@ -50,30 +60,24 @@ Proof.
       - eauto.
       - specialize (H' k (le_n _)). congruence.
     }
-    induction k.
-    + now left.
-    + destruct (f k) as [y|] eqn:Heq.
-      * destruct IHk as [H|H].
-        -- f_equal. eapply Hf; eassumption.
-        -- left. cbn. now rewrite H.
-        -- specialize (H k (le_n _)). congruence.
-      * 
-  - induction k.
-    + now exists 0.
-    + cbn in Hk.
-      destruct (mkstat f k) as [y|].
-      * apply IHk, Hk.
-      * now exists (S k).
-Admitted.
+    induction k; first now left.
+    destruct (f k) as [y|] eqn:Heq.
+    + destruct IHk as [H|H].
+      * f_equal. eauto.
+      * left. cbn. now rewrite Hk.
+      * specialize (H k (le_n _)). congruence.
+    + cbn. rewrite Hk. now left.
+  - eapply mkstat_exists; eassumption. 
+Qed.
 
 Lemma stationize {X} (f : nat -> nat -> option X) :
     (forall x k1 k2 y1 y2, f x k1 = Some y1 -> f x k2 = Some y2 -> y1 = y2) ->
     exists g, (forall x, stationary (g x)) /\ forall x y, (exists k, f x k = Some y) <-> (exists k, g x k = Some y).
 Proof.
-  intros Hfunc.
+  intros Hf.
   exists (fun x => mkstat (f x)).
-  split; first (intros; apply mkstat_stationary).
-  intros x y. apply mkstat_correct, Hfunc.
+  split; first (intros; apply mkstat_stationary, Hf).
+  intros x y. apply mkstat_correct, Hf.
 Qed.
 
 
@@ -86,21 +90,21 @@ Section CT.
         exists c, forall x y, (exists k, f x k = Some y) <-> (exists k, theta c x k = Some y).
   Arguments theta_univ : clear implicits.
 
-  Definition CTreturns c x y := exists n, theta c x n = Some y.
-  Definition CThalts c x := exists y, CTreturns c x y.
+  Definition theta_returns c x y := exists n, theta c x n = Some y.
+  Definition theta_halts c x := exists y, theta_returns c x y.
 
-  Lemma CTspecial_halting_undec : ~decidable (fun d => CThalts d d).
+  Lemma CTspecial_halting_undec : ~decidable (fun d => theta_halts d d).
   Proof.
     intros [f Hf].
     destruct (theta_univ (fun n _ => if f n then None else Some true)) as [c Hc].
     1: congruence.
     specialize (Hf c). specialize (Hc c).
     destruct (f c).
-    - assert (CThalts c c) as [y Hy] by firstorder.
-      assert (~CTreturns c c y) by intros [_ [=]]%Hc.
+    - assert (theta_halts c c) as [y Hy] by firstorder.
+      assert (~theta_returns c c y) by intros [_ [=]]%Hc.
       contradiction.
-    - enough (false = true) by congruence.
-      apply Hf. exists true. apply Hc. eauto.
+    - enough (theta_halts c c) by firstorder congruence.       
+      exists true. apply Hc. eauto.
   Qed.
 
   Section CThalt.
@@ -108,27 +112,25 @@ Section CT.
     Hypothesis provable_decidable : decidable provable.
 
     Variable wrepr : nat -> nat -> sentences.
-    Hypothesis Hwrepr : forall (c x : nat), CThalts c x <-> provable (wrepr c x).
+    Hypothesis Hwrepr : forall (c x : nat), theta_halts c x <-> provable (wrepr c x).
 
-    Lemma CTwrepr_dec : decidable (fun '(c, x) => CThalts c x).
+    Lemma CTwrepr_dec : decidable (fun c => theta_halts c c).
     Proof.
       destruct provable_decidable as [f Hf].
-      exists (fun '(c, x) => f (wrepr c x)).
-      intros [c x]. unfold reflects.
+      exists (fun c => f (wrepr c c)).
+      intros c. unfold reflects.
       rewrite Hwrepr. apply Hf.
     Qed.
 
     Lemma CTwrepr : False.
     Proof.
-      apply CTspecial_halting_undec.
-      destruct (CTwrepr_dec) as [f Hf].
-      exists (fun d => f (d, d)). firstorder.
+      apply CTspecial_halting_undec, CTwrepr_dec.
     Qed.
   End CThalt.
 
 
   Definition CGfunc (f : nat -> nat -> bool) := forall c x y,
-      (CTreturns c x y -> f c x = y).
+      (theta_returns c x y -> f c x = y).
 
   Lemma CG_undec : ~exists f, CGfunc f.
   Proof.
@@ -147,10 +149,8 @@ Section CT.
     Variable fs : FS.
     Hypothesis provable_decidable : decidable provable.
 
-    (*Hypothesis Hrepr : forall (f : nat -> nat -> option bool), exists (repr : nat -> bool -> sentences),
-        forall x y, (exists k, f x k = Some y) -> provable (repr x y) /\ provable (neg (repr x (negb y))).*)
-    Hypothesis Hrepr : forall c, { repr : nat -> bool -> sentences &
-        forall x y, CTreturns c x y -> provable (repr x y) /\ provable (neg (repr x (negb y))) }.
+    Hypothesis Hrepr : forall c, Sigma (repr : nat -> bool -> sentences),
+        forall x y, theta_returns c x y -> provable (repr x y) /\ provable (neg (repr x (negb y))).
     Arguments Hrepr : clear implicits.
 
     Lemma CG_dec : exists f, CGfunc f.
@@ -176,7 +176,7 @@ Section CT.
 
     Variable repr : nat -> nat -> bool -> sentences.
     Hypothesis Hrepr : forall c x y,
-        CTreturns c x y -> provable (repr c x y) /\ provable (neg (repr c x (negb y))).
+        theta_returns c x y -> provable (repr c x y) /\ provable (neg (repr c x (negb y))).
 
     Lemma CGexpl : exists s, ~provable s /\ ~provable (neg s).
     Proof.
