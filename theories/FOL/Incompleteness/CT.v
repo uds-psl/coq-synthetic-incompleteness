@@ -149,15 +149,15 @@ Section CT.
     Variable fs : FS.
     Hypothesis provable_decidable : decidable provable.
 
-    Hypothesis Hrepr : forall c, Sigma (repr : nat -> bool -> sentences),
-        forall x y, theta_returns c x y -> provable (repr x y) /\ provable (neg (repr x (negb y))).
+    Hypothesis Hrepr : forall (f : nat -> nat -> option bool), Sigma (repr : nat -> bool -> sentences),
+        forall x y, (exists k, f x k = Some y) -> provable (repr x y) /\ provable (neg (repr x (negb y))).
     Arguments Hrepr : clear implicits.
 
     Lemma CG_dec : exists f, CGfunc f.
     Proof.
       apply decidable_iff in provable_decidable as [prov_dec].
-      exists (fun c x => if prov_dec (projT1 (Hrepr c) x true) then true else false).
-      intros c x [] Hret; destruct prov_dec as [H|H]; destruct (Hrepr c) as [r Hr]; cbn in H.
+      exists (fun c x => if prov_dec (projT1 (Hrepr (theta c)) x true) then true else false).
+      intros c x [] Hret; destruct prov_dec as [H|H]; destruct (Hrepr (theta c)) as [r Hr]; cbn in H.
       - reflexivity.
       - contradict H. apply Hr, Hret.
       - destruct (consistent (r x (negb false))); intuition.

@@ -110,8 +110,7 @@ Section facts.
   Lemma neg_no_fixpoint_comp : completeness -> forall s, s <> neg s.
   Proof.
     intros complete s. destruct (complete s).
-    - now apply neg_no_fixpCheck CGexpl.
-oint.
+    - now apply neg_no_fixpoint.
     - now apply neg_no_fixpoint2.
   Qed.
 
