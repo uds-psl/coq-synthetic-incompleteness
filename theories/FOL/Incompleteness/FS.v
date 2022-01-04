@@ -290,16 +290,20 @@ Section instantiation.
     - exact form_neg. 
     - exact form_provable.
     - exact closed_discrete.
-    - now unshelve eapply closed_enum, form_enumerable.
+    - unshelve eapply closed_enum, form_enumerable; assumption.
     - exact form_provable_enumerable.
     - intros [s ?] H1 H2.
       apply (@consistency s); assumption.
-  Qed.
+  Defined.
 End instantiation.
+Print fs_fo.
 
 
 From Undecidability.FOL.Util Require Import Syntax_facts FullDeduction FullDeduction_facts FullTarski FullTarski_facts Axiomatisations.
 From Undecidability.FOL Require Import PA.
+
+Unset Printing Implicit.
+Check Q. 
 
 Definition Q := list_theory Qeq.
 Goal forall (T : form -> Prop), Q <<= T -> ~(T ⊢TC ⊥) -> exists phi, ~(T ⊢TC phi) /\ ~(T ⊢TC ¬phi).
