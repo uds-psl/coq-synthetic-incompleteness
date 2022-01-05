@@ -296,14 +296,9 @@ Section instantiation.
       apply (@consistency s); assumption.
   Defined.
 End instantiation.
-Print fs_fo.
-
 
 From Undecidability.FOL.Util Require Import Syntax_facts FullDeduction FullDeduction_facts FullTarski FullTarski_facts Axiomatisations.
 From Undecidability.FOL Require Import PA.
-
-Unset Printing Implicit.
-Check Q. 
 
 Definition Q := list_theory Qeq.
 Goal forall (T : form -> Prop), Q <<= T -> ~(T ⊢TC ⊥) -> exists phi, ~(T ⊢TC phi) /\ ~(T ⊢TC ¬phi).
