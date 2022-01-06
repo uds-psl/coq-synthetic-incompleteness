@@ -442,7 +442,7 @@ End CTrepr.
 
 Check CGexpl.
 
-From Undecidability.FOL.Util Require Import Syntax_facts FullDeduction FullDeduction_facts FullTarski FullTarski_facts Axiomatisations FA_facts.
+From Undecidability.FOL.Util Require Import Syntax_facts FullDeduction FullDeduction_facts FullTarski FullTarski_facts Axiomatisations FA_facts Syntax.
 From Undecidability.FOL Require Import PA.
 
 Definition Q := list_theory Qeq.
@@ -538,3 +538,68 @@ Proof.
   unfold form_provable, form_neg in H. cbn in H.
   Check H.
 Abort.
+
+Section Q_CT_val.
+  Existing Instance Qfs_intu.
+
+  Existing Instance PA_funcs_signature.
+  Existing Instance PA_preds_signature.
+
+  Variable f : nat -> bool.
+  Variable phi : form.
+  Hypothesis phi_bounded : bounded 2 phi.
+
+  Definition b_n (b : bool) := if b then 1 else 0.
+
+  Local Lemma Q_equal x : Qeq ⊢I num x == num x.
+  Proof. Admitted.
+  Local Lemma Q_nequal x y : x <> y -> Qeq ⊢I ¬(num x == num y).
+  Proof. Admitted.
+
+  Hypothesis repr : forall x y, Q ⊢TI phi[num x .: (num (b_n y)) ..] <~> num (b_n (f x)) == num (b_n y).
+  Lemma repr' : forall x y, Qeq ⊢I phi[num x .: (num (b_n y)) ..] <~> num (b_n (f x)) == num (b_n y).
+  Proof.
+    intros x y. destruct (repr x y) as (Q' & HQ' & Hrepr).
+    eapply Weak; eauto.
+  Qed.
+
+  Lemma CTQ_value_repr' : forall x y, f x = y ->
+              Qeq ⊢I phi[num x .: (num (b_n y)) ..] /\
+              Qeq ⊢I ¬phi[num x .: (num (b_n (negb y))) ..].
+  Proof.
+    intros x y H. split.
+    - eapply IE.
+      { eapply CE2. apply repr'. }
+      subst. apply Q_equal.
+    - apply II.
+      eapply IE with (phi0 := num (b_n (f x)) == num (b_n (negb y))).
+      { eapply Weak.
+        - eapply Q_nequal. destruct (f x), y; cbn; congruence.
+        - auto.
+      }
+      eapply IE.
+      { eapply CE1.
+        eapply Weak.
+        - eapply repr'.
+        - auto.
+      }
+      apply Ctx. auto.
+  Qed.
+
+  Lemma bounded_subst ϕ a b n : bounded 2 ϕ -> bounded n (ϕ[a .: b ..]).
+  Proof. Admitted. (* TODO *)
+
+  Lemma CTQ_value_repr : Sigma (r : nat -> bool -> form), forall x y,
+        bounded 0 (r x y) /\ (f x = y -> Q ⊢TI r x y /\ Q ⊢TI ¬r x (negb y)).
+  Proof.
+    exists (fun x y => phi[num x .: (num (b_n y)) ..]). intros x y.
+    split.
+    { apply bounded_subst, phi_bounded. }
+    intros H. split.
+    - exists Qeq. split; first auto.
+      apply CTQ_value_repr', H.
+    - exists Qeq. split; first auto.
+      apply CTQ_value_repr', H.
+  Qed.
+End Q_CT_val.
+Check CTQ_value_repr.
