@@ -541,21 +541,78 @@ Abort.
 
 Section Q_CT_val.
   Existing Instance Qfs_intu.
+  Existing Instance intu.
 
   Existing Instance PA_funcs_signature.
   Existing Instance PA_preds_signature.
 
-  Variable f : nat -> bool.
+  Variable theta : nat -> nat -> nat -> option bool.
+
+  Hypothesis theta_stationary : forall c, fstationary (theta c).
+  Hypothesis theta_univ : forall (f : nat -> nat -> option bool), fstationary f ->
+            exists c, forall x y, freturns f x y <-> freturns (theta c) x y.
+  Arguments theta_univ : clear implicits.
+
+  (* TODO I need to adapt this to work with CT *)
+
+  Variable (f : nat -> bool).
+
   Variable phi : form.
   Hypothesis phi_bounded : bounded 2 phi.
 
   Definition b_n (b : bool) := if b then 1 else 0.
 
-  Local Lemma Q_equal x : Qeq ⊢I num x == num x.
-  Proof. Admitted.
-  Local Lemma Q_nequal x y : x <> y -> Qeq ⊢I ¬(num x == num y).
-  Proof. Admitted.
+  Lemma Q_equal x : Qeq ⊢I num x == num x.
+  Proof.
+    apply reflexivity. unfold Qeq, PA.Q, FAeq.
+    auto.
+  Qed.
+  Lemma num_subst x ρ : (num x)`[ρ] = num x.
+  Proof.
+    induction x; cbn; congruence.
+  Qed.
 
+  Lemma vec_singleton {X} (a b : X) : Vector.In a (Vector.cons b Vector.nil) -> a = b.
+  Proof.
+    now intros [->|[]%Vectors.In_nil]%Vectors.In_cons.
+  Qed.
+
+  Lemma Q_nequal x y : x <> y -> Qeq ⊢I ¬(num x == num y).
+  Proof.
+    intros H.
+    induction x in y,H |-*; destruct y.
+    - congruence.
+    - change (¬ num 0 == num (S y)) with ((¬ zero == σ $0)[(num y)..]).
+      eapply AllE. apply Ctx. firstorder.
+    - apply II.
+      apply IE with (num 0 == num (S x)).
+      + change (¬ num 0 == num (S x)) with ((¬ zero == σ $0)[(num x) ..]).
+        apply AllE. apply Ctx. firstorder.
+      + apply IE with (num (S x) == num 0); last now apply Ctx.
+        change (num (S x) == num 0 ~> num 0 == num (S x)) with
+          ($1 == $0 ~> $0 == $1)[num 0 .: (num (S x)) ..].
+        eapply subst_forall_prv with (N := 2).
+        2: { solve_bounds; constructor; lia. }
+        cbn [forall_times iter].
+        apply Ctx. firstorder.
+    - apply II. apply IE with (phi0 := num x == num y).
+      + eapply Weak.
+        * eapply IHx. congruence.
+        * auto.
+      + eapply IE with (phi0 := num (S x) == num (S y)).
+        * change (num (S x) == num (S y) ~> num x == num y)
+                 with
+          ((σ $1 == σ $0 ~> $1 == $0)[(num y) .: (num x) ..]).
+          apply subst_forall_prv with (N := 2).
+          2: {
+            solve_bounds.
+            1-2: constructor; intros t ->%vec_singleton.
+            all: constructor; lia.
+          }
+          cbn [forall_times iter].
+          apply Ctx. firstorder.
+        * firstorder.
+  Qed.
   Hypothesis repr : forall x y, Q ⊢TI phi[num x .: (num (b_n y)) ..] <~> num (b_n (f x)) == num (b_n y).
   Lemma repr' : forall x y, Qeq ⊢I phi[num x .: (num (b_n y)) ..] <~> num (b_n (f x)) == num (b_n y).
   Proof.
@@ -586,15 +643,27 @@ Section Q_CT_val.
       apply Ctx. auto.
   Qed.
 
-  Lemma bounded_subst ϕ a b n : bounded 2 ϕ -> bounded n (ϕ[a .: b ..]).
-  Proof. Admitted. (* TODO *)
-
+  Lemma num_bound n : bounded_t 0 (num n).
+  Proof.
+    induction n; cbn; constructor.
+    - intros t []%Vectors.In_nil.
+    - intros t ->%vec_singleton.
+      assumption.
+  Qed.
+  Lemma subst_bound psi :
+      forall sigma N B, bounded N psi -> (forall n, n < N -> bounded_t B (sigma n) ) -> bounded B (psi[sigma]).
+  Proof. Admitted. (* WIP by Marc *)
   Lemma CTQ_value_repr : Sigma (r : nat -> bool -> form), forall x y,
         bounded 0 (r x y) /\ (f x = y -> Q ⊢TI r x y /\ Q ⊢TI ¬r x (negb y)).
   Proof.
     exists (fun x y => phi[num x .: (num (b_n y)) ..]). intros x y.
     split.
-    { apply bounded_subst, phi_bounded. }
+    { apply subst_bound with (N := 2); first assumption.
+      intros [|[|n]].
+      - intros _. apply num_bound.
+      - intros _. apply num_bound.
+      - lia.
+    }
     intros H. split.
     - exists Qeq. split; first auto.
       apply CTQ_value_repr', H.
@@ -602,4 +671,50 @@ Section Q_CT_val.
       apply CTQ_value_repr', H.
   Qed.
 End Q_CT_val.
-Check CTQ_value_repr.
+
+Section totalCT.
+  Definition CTpartial := exists (theta : nat -> nat -> nat -> option bool),
+      (forall c, fstationary (theta c)) /\
+        forall (f : nat -> nat -> option bool), fstationary f ->
+          exists c, forall x y, freturns f x y <-> freturns (theta c) x y.
+  Definition CTtotal := exists (phi : nat -> nat -> nat -> option bool),
+      (forall c, fstationary (phi c)) /\
+      forall (f : nat -> bool), exists c, forall x, exists k, phi c x k = Some (f x).
+
+  Lemma CTpt : CTpartial <-> CTtotal.
+  Proof.
+    split.
+    - intros (theta & theta_stationary & theta_universal).
+      exists theta.
+      split; first easy.
+      intros f. destruct (theta_universal (fun x k => Some (f x))) as [c Hc].
+      { congruence. }
+      exists c. intros x.
+      change (freturns (theta c) x (f x)).
+      rewrite <-Hc.
+      now exists 0.
+    - intros (phi & phi_universal).
+      admit.
+  Admitted.
+
+End totalCT.
+
+Section CTQ_expl.
+  Existing Instance Qfs_intu.
+
+  Variable theta : nat -> nat -> nat -> option bool.
+
+  Hypothesis theta_stationary : forall c, fstationary (theta c).
+  Hypothesis theta_univ : forall (f : nat -> nat -> option bool), fstationary f ->
+            exists c, forall x y, freturns f x y <-> freturns (theta c) x y.
+  Arguments theta_univ : clear implicits.
+
+  (*Hypothesis CT_Q : forall c, Sigma (psi : sentences),
+    forall x y, Q ⊢TI psi[num x .: (num y) ..] <~> ()
+  Hypothesis Hrepr : forall c, Sigma (repr : nat -> bool -> sentences),
+      forall x y, freturns (theta c) x y -> provable (repr x y) /\ provable (neg (repr x (negb y))).
+  Lemma Qexpl : exists s, ~provable s /\ ~provable (neg s).
+  Proof.
+    eapply CGexpl; eassumption.
+  Qed.*)
+End CTQ_expl.
