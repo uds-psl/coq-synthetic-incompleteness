@@ -285,6 +285,6 @@ Theorem DPRM_1 (P : nat -> Prop) :
        * (fractran_recognisable P -> dio_rec_single P)   
        * (dio_rec_single P        -> mu_recursive P)
        * (mu_recursive P           -> mm_recognisable P).
-Proof. lsplit 3; auto. Qed. 
+Proof. lsplit 3; auto. Qed.
 
 Check DPRM_1.

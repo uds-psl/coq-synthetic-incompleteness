@@ -456,8 +456,6 @@ Proof.
   - intros [k Hk]. eapply List.nth_error_In, Hk.
 Qed.
 
-Print peirce. 
-
 Definition Qfs_intu : FS.
 Proof.
   eapply fs_fo with (T := Q) (peirce := intu).
@@ -545,6 +543,10 @@ Section Q_CT_val.
 
   Existing Instance PA_funcs_signature.
   Existing Instance PA_preds_signature.
+
+  Lemma subst_bound psi : (* TODO move to util *)
+      forall sigma N B, bounded N psi -> (forall n, n < N -> bounded_t B (sigma n) ) -> bounded B (psi[sigma]).
+  Proof. Admitted. (* WIP by Marc *)
 
   Variable theta : nat -> nat -> nat -> option bool.
 
@@ -650,9 +652,6 @@ Section Q_CT_val.
     - intros t ->%vec_singleton.
       assumption.
   Qed.
-  Lemma subst_bound psi :
-      forall sigma N B, bounded N psi -> (forall n, n < N -> bounded_t B (sigma n) ) -> bounded B (psi[sigma]).
-  Proof. Admitted. (* WIP by Marc *)
   Lemma CTQ_value_repr : Sigma (r : nat -> bool -> form), forall x y,
         bounded 0 (r x y) /\ (f x = y -> Q ⊢TI r x y /\ Q ⊢TI ¬r x (negb y)).
   Proof.
