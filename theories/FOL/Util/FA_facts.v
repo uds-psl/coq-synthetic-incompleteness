@@ -352,6 +352,7 @@ Notation "'iO'" := (i_func (Σ_funcs:=PA_funcs_signature) (f:=Zero) []) (at leve
 Notation "'iσ' d" := (i_func (f:=Succ) [d]) (at level 37) : PA_Notation.
 Notation "x 'i⊕' y" := (i_func (f:=Plus) [x ; y]) (at level 39) : PA_Notation.
 Notation "x 'i⊗' y" := (i_func (f:=Mult) [x ; y]) (at level 38) : PA_Notation.
+Notation "x 'i⧀' y"  := (∃ (x`[↑] i⊕ (iσ $0)) == y) (at level 42) : PA_Notation.
 
                                                                         
 Section FA_models.

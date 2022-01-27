@@ -304,26 +304,6 @@ Section CT.
     Qed.
   End CTexpl.
 
-  Section inseparable.
-    Hypothesis (FS : FS).
-    (* C1 and C2 must be disjoint *)
-    Variable (C1 C2 : nat -> Prop).
-
-    Hypothesis insep : forall (f : nat -> nat -> option bool),
-        fstationary f ->
-        (forall x, (C1 x -> exists k, f x k = Some true) /\ (C2 x -> exists k, f x k = Some false)) ->
-        Sigma y, forall k, f y k = None.
-
-    Hypothesis repr : Sigma (r1 r2 : nat -> sentences),
-        forall x, (C1 x -> provable (r1 x) /\ provable (neg (r2 x))) /\
-             (C2 x -> provable (neg (r1 x)) /\ provable (r2 x)).
-
-    Lemma gasfdhjlk : Sigma s, ~provable s /\ ~provable (neg s).
-    Proof.
-    Abort.
-
-  End inseparable.
-
   Section CTsecond.
     Variable sentences : Type.
     Variable neg : sentences -> sentences.
@@ -537,7 +517,7 @@ Proof.
   Check H.
 Abort.
 
-Section Q_CT_val.
+Section Q_CT_val_total.
   Existing Instance Qfs_intu.
   Existing Instance intu.
 
@@ -669,51 +649,4 @@ Section Q_CT_val.
     - exists Qeq. split; first auto.
       apply CTQ_value_repr', H.
   Qed.
-End Q_CT_val.
-
-Section totalCT.
-  Definition CTpartial := exists (theta : nat -> nat -> nat -> option bool),
-      (forall c, fstationary (theta c)) /\
-        forall (f : nat -> nat -> option bool), fstationary f ->
-          exists c, forall x y, freturns f x y <-> freturns (theta c) x y.
-  Definition CTtotal := exists (phi : nat -> nat -> nat -> option bool),
-      (forall c, fstationary (phi c)) /\
-      forall (f : nat -> bool), exists c, forall x, exists k, phi c x k = Some (f x).
-
-  Lemma CTpt : CTpartial <-> CTtotal.
-  Proof.
-    split.
-    - intros (theta & theta_stationary & theta_universal).
-      exists theta.
-      split; first easy.
-      intros f. destruct (theta_universal (fun x k => Some (f x))) as [c Hc].
-      { congruence. }
-      exists c. intros x.
-      change (freturns (theta c) x (f x)).
-      rewrite <-Hc.
-      now exists 0.
-    - intros (phi & phi_universal).
-      admit.
-  Admitted.
-
-End totalCT.
-
-Section CTQ_expl.
-  Existing Instance Qfs_intu.
-
-  Variable theta : nat -> nat -> nat -> option bool.
-
-  Hypothesis theta_stationary : forall c, fstationary (theta c).
-  Hypothesis theta_univ : forall (f : nat -> nat -> option bool), fstationary f ->
-            exists c, forall x y, freturns f x y <-> freturns (theta c) x y.
-  Arguments theta_univ : clear implicits.
-
-  (*Hypothesis CT_Q : forall c, Sigma (psi : sentences),
-    forall x y, Q ⊢TI psi[num x .: (num y) ..] <~> ()
-  Hypothesis Hrepr : forall c, Sigma (repr : nat -> bool -> sentences),
-      forall x y, freturns (theta c) x y -> provable (repr x y) /\ provable (neg (repr x (negb y))).
-  Lemma Qexpl : exists s, ~provable s /\ ~provable (neg s).
-  Proof.
-    eapply CGexpl; eassumption.
-  Qed.*)
-End CTQ_expl.
+End Q_CT_val_total.
