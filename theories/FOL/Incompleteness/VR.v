@@ -46,11 +46,6 @@ Section sigma.
   Lemma PNF_impl φ1 φ2 : Π1 φ1 -> Σ1 φ2 -> exists ψ, Σ1 ψ /\ Qeq ⊢C (φ1 ~> φ2) <~> ψ.
   Proof. Admitted.
 
-  Lemma Σ1_subst φ ρ : Σ1 φ -> Σ1 φ[ρ].
-  Proof using . Admitted.
-
-
-
   Lemma Σcompleteness : forall φ, Σ1 φ -> interp_nat ⊨= φ -> Qeq ⊢C φ.
   Proof. Admitted. (* WIP by Marc *)
   Lemma Q_sound φ : Qeq ⊢C φ -> interp_nat ⊨= φ.
@@ -66,10 +61,15 @@ Section sigma.
 End sigma.
 
 
+(* Notation for satisfying list theories *)
 Notation "I ⊨=L T" := (forall psi, List.In psi T -> I ⊨= psi) (at level 20).
+(* Notation for explicitely giving model *)
+Notation "I , rho '⊨' phi" := (@sat _ _ _ I _ rho phi) (at level 20, rho at next level).
+
 (* increasing x instead of k to be able to use recursive formulae *)
 (* NOTE this definition requires extensionality of the model *)
 Notation "x 'i⧀' y"  := (exists k, y = (iσ x) i⊕ k) (at level 42) : PA_Notation.
+(* Overwriting notation from PA.v to be useful in any way *)
 Notation "x '⧀' y"  := (∃ y`[↑] == ((σ x`[↑]) ⊕ $0)) (at level 42) : PA_Notation.
 Section Qmodel.
   Existing Instance PA_funcs_signature.
@@ -77,28 +77,47 @@ Section Qmodel.
 
   Existing Instance class.
 
-  Hypothesis LEM : forall P, P \/ ~P.
-
   Context [M : Type] [I : interp M].
-  Context [QM : I ⊨=L Q] [Mext : extensional I].
+  Context [QM : I ⊨=L Qeq] [Mext : extensional I].
 
   Local Ltac search_list :=
    repeat ((left; reflexivity) + right) .
-  Local Ltac by_axiom A :=
-    rewrite <-!Mext; enough (I ⊨= A) by (cbn in *; firstorder); apply QM; search_list.
   Lemma add_zero m : iO i⊕ m = m.
-  Proof. by_axiom ax_add_zero. Qed.
+  Proof.
+    rewrite <-Mext. enough (I ⊨= ax_add_zero).
+    { cbn in H. now apply H. }
+    apply QM. search_list.
+  Qed.
   Lemma add_rec m n : iσ m i⊕ n = iσ (m i⊕ n).
-  Proof. by_axiom ax_add_rec. Qed.
+  Proof.
+    rewrite <-Mext. enough (I ⊨= ax_add_rec).
+    { cbn in H. now apply H. }
+    apply QM. search_list.
+  Qed.
   Lemma mult_zero m : iO i⊗ m = iO.
-  Proof. by_axiom ax_mult_zero. Qed.
+  Proof.
+    rewrite <-Mext. enough (I ⊨= ax_mult_zero).
+    { cbn in H. now apply H. }
+    apply QM. search_list.
+  Qed.
   Lemma mult_rec m n : iσ m i⊗ n = n i⊕ m i⊗ n.
-  Proof. by_axiom ax_mult_rec. Qed.
+  Proof.
+    rewrite <-Mext. enough (I ⊨= ax_mult_rec).
+    { cbn in H. now apply H. }
+    apply QM. search_list.
+  Qed.
   Lemma zero_succ m : ~iO = iσ m.
-  Proof. by_axiom ax_zero_succ. Qed.
-  Print ax_succ_inj.
+  Proof.
+    rewrite <-Mext. enough (I ⊨= ax_zero_succ).
+    { cbn in H. unfold "~". now apply H. }
+    apply QM. search_list.
+  Qed.
   Lemma succ_inj m n : iσ m = iσ n -> m = n.
-  Proof. by_axiom ax_succ_inj. Qed.
+  Proof.
+    rewrite <-!Mext. enough (I ⊨= ax_succ_inj).
+    { cbn in H. now apply H. }
+    apply QM. search_list.
+  Qed.
   Lemma cases m : m = iO \/ exists m', m = iσ m'.
   Proof.
     enough (m i= iO \/ exists m', m i= iσ m') as [H|(m' & Hm)].
@@ -127,44 +146,44 @@ Section Qmodel.
 
 
   Definition standard {M} {I : interp M} (m : M) := exists k, iμ k = m.
-  Lemma standard_succ (m : M) : standard m -> standard (iσ m).
+  Lemma num_standard (n : nat) : standard (iμ n).
   Proof.
-    intros [k Hk]. exists (S k).
-    cbn. congruence.
+    induction n; cbn.
+    - now exists 0.
+    - exists (S n). cbn. congruence.
   Qed.
-  Lemma standard_pred (m : M) : standard (iσ m) -> standard m.
+  Lemma standard_succ (m : M) : standard m <-> standard (iσ m).
   Proof.
-    intros [k Hk]. exists (k-1).
-    destruct k.
-    { edestruct zero_succ.  apply Hk. }
-    cbn. apply succ_inj.
-    replace (k-0) with k by lia. assumption.
+    split.
+    - intros [k Hk]. exists (S k). cbn. congruence.
+    - intros [k Hk]. exists (k-1).
+      destruct k.
+      { edestruct zero_succ. apply Hk. }
+      cbn. apply succ_inj.
+      replace (k-0) with k by lia. assumption.
   Qed.
-
-  Lemma standard_add (m n : M) : standard (m i⊕ n) -> standard m /\ standard n.
+  Lemma standard_add (m n : M) : standard (m i⊕ n) <-> standard m /\ standard n.
   Proof.
-    intros [k' Hk]. revert Hk. induction k' in m, n |-*; intros Hk; subst.
-    - destruct (cases m) as [-> | (m' & ->)].
-      2: { rewrite add_rec in Hk. edestruct zero_succ. apply Hk. }
-      rewrite add_zero in Hk. subst.
-      split; now exists 0.
-    - destruct (cases m) as [-> | (m' & ->)], (cases n) as [-> | (n' & ->)].
-      + split; now exists 0.
-      + split; first now exists 0.
-        rewrite <-add_zero, <-Hk.
-        now exists (S k').
-      + rewrite add_rec in Hk.
-        enough (standard m' /\ standard iO).
-        { pose proof (@standard_succ m'). tauto. }
-        eapply IHk'. apply succ_inj, Hk.
-      + rewrite add_rec in Hk.
-        enough (standard m' /\ standard (iσ n')).
-        { pose proof (@standard_succ m'). tauto. }
-        eapply IHk'. apply succ_inj, Hk.
-  Qed.
-  Lemma standard_add' (k m n : M) : standard k -> k = m i⊕ n -> standard m /\ standard n.
-  Proof.
-    intros H ->. now apply standard_add.
+    split.
+    - intros [k' Hk]. revert Hk. induction k' in m, n |-*; intros Hk; subst.
+      + destruct (cases m) as [-> | (m' & ->)].
+        2: { rewrite add_rec in Hk. edestruct zero_succ. apply Hk. }
+        rewrite add_zero in Hk. subst.
+        split; now exists 0.
+      + destruct (cases m) as [-> | (m' & ->)], (cases n) as [-> | (n' & ->)].
+        * split; now exists 0.
+        * split; first now exists 0.
+          rewrite <-add_zero, <-Hk.
+          now exists (S k').
+        * rewrite add_rec in Hk.
+          enough (standard m' /\ standard iO).
+          { pose proof (@standard_succ m'). tauto. }
+          eapply IHk'. apply succ_inj, Hk.
+        * rewrite add_rec in Hk.
+          enough (standard m' /\ standard (iσ n')).
+          { pose proof (@standard_succ m'). tauto. }
+          eapply IHk'. apply succ_inj, Hk.
+    - intros [[m' Hm] [n' Hn]]. exists (m' + n'). rewrite <-add_hom. congruence.
   Qed.
 
   Lemma standard_le (m : M) (k : nat) :
@@ -181,6 +200,18 @@ Section Qmodel.
   Proof.
     intros [n' <-]. apply standard_le.
   Qed.
+  Lemma nonstandard_large (n : nat) (m : M) : ~standard m -> iμ n i⧀ m.
+  Proof.
+    induction n in m |-*.
+    - intros H. destruct (cases m) as [-> | [m' ->]].
+      + exfalso. apply H. now exists 0.
+      + exists m'. now rewrite add_rec, add_zero.
+    - intros H. destruct (cases m) as [-> | [m' ->]].
+      + exfalso. apply H. now exists 0.
+      + destruct (IHn m') as [d Hd].
+        { contradict H. now rewrite <-standard_succ. }
+        exists d. cbn. rewrite add_rec. congruence.
+  Qed.
 End Qmodel.
 
 
@@ -191,46 +222,36 @@ Section value.
   Existing Instance PA_preds_signature.
 
   Existing Instance class.
+
   Existing Instance interp_nat.
 
-
-  Hypothesis LEM : forall P, P \/ ~P.
-
-  Notation "I ⊨=L T" := (forall psi, List.In psi T -> I ⊨= psi) (at level 20).
   Hypothesis completeness : forall φ,
-    Q ⊢C φ <-> forall (M : Type) (I : interp M) ρ, extensional I -> I ⊨=L Q -> sat ρ φ.
-  (* NOTE there are more quantifiers over environments than necessary here *)
-  Check @sat.
+    Qeq ⊢C φ <-> forall (M : Type) (I : interp M) ρ, extensional I -> I ⊨=L Qeq -> ρ ⊨ φ.
   Hypothesis Σcompleteness : forall M (I : interp M) φ ρN ρM,
       bounded 0 φ -> Σ1 φ ->
-      @sat _ _ _ interp_nat _ ρN φ ->
-      @sat _ _ _ I _ ρM φ.
-  Hypothesis Δcompleteness : forall M1 (I1 : interp M1) M2 (I2 : interp M2) φ ρ1 ρ2,
-      bounded 0 φ -> Δ0' φ ->
-      @sat _ _ _ I1 _ ρ1 φ ->
-      @sat _ _ _ I2 _ ρ2 φ.
+      interp_nat, ρN ⊨ φ ->
+      I, ρM ⊨ φ.
+  Hypothesis Δ0decidability : forall φ, Δ0' φ -> Qeq ⊢C φ \/ Qeq ⊢C ¬φ.
 
-
-  Variable (f : nat -> nat -> option nat).
+  Variable f : nat -> nat -> option nat.
+  Variable f_func : forall x y1 y2 k1 k2, f x k1 = Some y1 -> f x k2 = Some y2 -> y1 = y2.
 
   Variable T : form.
   Hypothesis T_bounded : bounded 3 T.
-  (* NOTE blogpost assumes theta to be Delta0. This is required to get M shows -> nat shows.
-     alternatively we need T to be Delta1 to lift functionality to M *)
+  (* NOTE Delta1 could suffice here, since its still decidable *)
   Hypothesis T_Δ0 : Δ0' T.
   Hypothesis T_sem : forall M (I : interp M) ρ x y,
-      (exists k, f x k = Some y) <-> ρ ⊨ ∃ T[num x .: num y .: $0 ..].
-  Hypothesis T_syn : forall x y,
-      (exists k, f x k = Some y) <-> Q ⊢C ∃ T[num x .: num y .: $0 ..].
+      (exists k, f x k = Some y) <-> ρ ⊨ ∃ T[num x .: (num y) ..].
+  (* T is functional in nat. This assumption is implicit in the post by saying "a T predicate",
+     I guess *)
   Hypothesis T_func : forall ρ x k k' y y',
-     ρ ⊨ T[num x .: num y .: (num k) ..] -> ρ ⊨ T[num x .: num y' .: (num k') ..] -> y = y' /\ k = k'.
+      interp_nat, ρ ⊨ T[num x .: num y .: (num k) ..] ->
+      interp_nat, ρ ⊨ T[num x .: num y' .: (num k') ..] ->
+      y = y' /\ k = k'.
+  Hypothesis T_syn : forall x y,
+      (exists k, f x k = Some y) <-> Qeq ⊢C ∃ T[num x .: num y .: $0 ..].
 
   Definition T' := T ∧ ∀∀ ($1⊕$0 ⧀ $3⊕$4) ~> T[$2.:$1.:$0..] ~> ⊥.
-
-  Lemma num_subst x s : (num x)`[s] = num x.
-  Proof.
-    induction x; cbn; congruence.
-  Qed.
 
   Lemma sat_T_bound M (I : interp M) (ρ : env M) :
     ρ ⊨ T <-> (ρ 0 .: ρ 1 .: ρ 2 .: (fun _ => iO)) ⊨ T.
@@ -247,17 +268,14 @@ Section value.
     eapply bounded_subst; first apply T_bounded.
     intros [|[|[|n]]] H; cbn; lia + easy.
   Qed.
-  Lemma iμk_k k : iμ k = k.
-  Proof. induction k; cbn; congruence. Qed.
-
 
   Lemma sat_subst_single_nat φ (ρ : env nat) (k : nat) :
     (k .: ρ) ⊨ φ -> ρ ⊨ φ [(num k)..].
   Proof.
-    intros H. rewrite <-sat_single.
-    now rewrite eval_num, iμk_k.
+    rewrite <-sat_single, eval_num.
+    replace (iμ k) with k; first easy.
+    induction k; cbn; congruence.
   Qed.
-
   Lemma sat_subst_single_model M (I : interp M) φ (ρ : env M) (k : nat) :
     (iμ k .: ρ) ⊨ φ <-> ρ ⊨ φ[(num k)..].
   Proof.
@@ -267,53 +285,96 @@ Section value.
       now rewrite eval_num in H.
   Qed.
 
-  Lemma T_completeness (M : Type) (I : interp M) (ρN : env nat) (ρM : env M) x y k :
-    ρN ⊨ T[num x .: num y .: (num k) ..] -> ρM ⊨ T[num x .: num y .: (num k)..].
+  Lemma T_completeness M (I : interp M) (Mext : extensional I) (MQ : I ⊨=L Qeq) ρN ρM x y k :
+    interp_nat, ρN ⊨ T[num x .: num y .: (num k) ..] <-> I, ρM ⊨ T[num x .: num y .: (num k)..].
   Proof.
-    intros H. eapply Σcompleteness.
-    - eapply subst_bound; first apply T_bounded.
-      intros [|[|[|n]]]; intros H'; last lia.
-      all: apply num_bound.
-    - apply Σ1_subst. now constructor.
-    - apply H.
+    split.
+    - intros H. eapply Σcompleteness.
+      + eapply subst_bound; first apply T_bounded.
+        intros [|[|[|n]]]; intros H'; last lia.
+        all: apply num_bound.
+      + admit.
+      + apply H.
+    - intros H. destruct Δ0decidability with (φ := T[num x .: num y .: (num k) ..]) as [HQ|HQ].
+      + admit. (* TODO by substitution *)
+      + eapply completeness; now auto using nat_is_Q_model.
+      + eapply completeness with (I := I) in HQ; try assumption.
+        exfalso. apply HQ, H.
+  Admitted.
+  Lemma T_single_rho_model M (I : interp M) ρ x y k :
+     ((iμ k) .: ρ) ⊨ T[num x .: (num y) ..] <-> ρ ⊨ T[num x .: num y .: (num k) ..].
+  Proof.
+    assert (iμ k = eval ρ (num k)) as Hk by (induction k; cbn; congruence).
+    rewrite Hk at 1. rewrite sat_single, subst_comp, subst_T_bound.
+    cbn. rewrite !num_subst. reflexivity.
+  Qed.
+  Lemma T_single_rho_nat ρ x y k :
+     (k .: ρ) ⊨ T[num x .: (num y) ..] <-> ρ ⊨ T[num x .: num y .: (num k) ..].
+  Proof.
+    replace k with (iμ k) at 1; first apply T_single_rho_model.
+    induction k; cbn; congruence.
   Qed.
 
-  Lemma VR1 x y : (exists k, f x k = Some y) -> Q ⊢C ∃T'[num x .: (num y) ..].
+  Lemma T_sem' x y ρ :
+    (exists k, f x k = Some y) <-> exists k, interp_nat, ρ ⊨ T[num x .: num y .: (num k) ..].
   Proof.
-    intros H. apply completeness.
+    split.
+    - intros H. eapply T_sem with (I := interp_nat) (ρ := ρ) in H.
+      destruct H as [k Hk]. exists k. now apply T_single_rho_nat.
+    - intros [k Hk]. eapply T_sem. exists k. apply T_single_rho_nat, Hk.
+  Qed.
+
+
+  Lemma VR1 x y : (exists k, f x k = Some y) -> Qeq ⊢C ∃T'[num x .: (num y) ..].
+  Proof.
+    intros Hf. apply completeness.
     intros M I ρ Mext HI.
-    assert ((fun _ : nat => 0) ⊨ ∃ T[num x .: num y .: $0..]) as [k Hk] by apply T_sem, H.
-    apply sat_subst_single_nat in Hk. rewrite subst_comp, subst_T_bound in Hk.
-    cbn in Hk. rewrite !num_subst in Hk.
+    assert (exists k, (fun _ => 0) ⊨ T[num x .: num y .: (num k) ..]) as [k Hk] by now apply T_sem'.
     exists (iμ k). split.
-    - apply sat_subst_single_model. rewrite subst_comp.
-      rewrite subst_T_bound. cbn. rewrite !num_subst.
-      eapply T_completeness, Hk.
-    - intros y' k' [d Hle] HT.
-      cbn in Hle. rewrite !num_subst, !eval_num in Hle.
-      do 2 rewrite sat_comp in HT.
-      apply sat_T_bound in HT. cbn in HT. rewrite ?num_subst, ?eval_num in HT.
-      cbn.
-      rewrite add_hom in Hle; try assumption. rewrite Mext,<-add_rec in Hle; try assumption.
-      destruct standard_add' with (4 := Hle) as [Hs [d' <-]]; try assumption; first now eexists.
-      apply standard_add in Hs as [[y'' Hy''] [k'' <-]]; try assumption.
-      rewrite <-Hy'' in Hle. rewrite !add_hom in Hle; try assumption.
-      apply iμ_inj in Hle; try assumption.
-      destruct y'' as [|y''].
-      { apply zero_succ in Hy'' as []; assumption. }
-      cbn in Hy''. apply succ_inj in Hy''; try assumption. rewrite <-Hy'' in HT.
-      rewrite !sat_subst_single_model, !subst_comp, subst_T_bound in HT.
-      cbn in HT. rewrite !num_subst in HT.
-      eapply Δcompleteness with (I2 := interp_nat) (ρ2 := fun _ => 0) in HT; first last.
-      + admit.
-      + admit.
-      + pose proof (T_func Hk HT). lia.
-  Admitted.
-  Lemma VR2 x y' y : (exists k, f x k = Some y) -> y <> y' -> Q ⊢C ¬∃T'[num x .: (num y) ..].
+    - apply T_single_rho_model. now eapply T_completeness, Hk.
+    - intros y' k' [d Hle] HT. cbn.
+      cbn in Hle. rewrite !num_subst, !eval_num, Mext in Hle.
+
+      assert (standard (iμ y i⊕ iμ k)) as Hyk.
+      { rewrite add_hom; try assumption. apply num_standard. }
+      rewrite Hle, !add_rec, <-standard_succ in Hyk; try assumption.
+      apply standard_add in Hyk as [[[y'' <-] [k'' <-]]%standard_add [d' <-]]; try assumption.
+
+      assert (y + k = S y'' + k'' + d') as Hle'.
+      { eapply iμ_inj; try assumption. cbn.
+        rewrite <-!add_hom, <-add_rec; try assumption. }
+
+      rewrite !sat_subst_single_model, !subst_comp, subst_T_bound in HT. cbn in HT.
+      rewrite !num_subst in HT.
+      eapply T_completeness in HT; try assumption.
+
+      pose proof (T_func Hk HT). lia.
+  Qed.
+  Lemma VR2 x y' y : (exists k, f x k = Some y) -> y <> y' -> Qeq ⊢C ¬∃T'[num x .: (num y') ..].
   Proof.
     intros Hf Hy. apply completeness.
     intros M I ρ Mext HI [k [Hk1 Hk2]]. cbn.
-    cbn in Hk2. rewrite !num_subst in Hk2.
+    assert (exists k, (fun _ => 0) ⊨ T[num x .: num y .: (num k) ..]) as [kk Hkk] by now apply T_sem'.
+
+    cbn in Hk2. apply (Hk2 (iμ y) (iμ kk)).
+    - enough (iμ y i⊕ iμ kk i⧀ iμ y' i⊕ k) as [d Hd].
+      { exists d. now rewrite !num_subst, eval_num, Mext.  }
+      rewrite add_hom; try assumption.
+      eapply nonstandard_large; try assumption.
+      enough (~standard k) as Hk.
+      { rewrite standard_add; try assumption. tauto. }
+      intros [ks <-]. apply Hy.
+
+      assert (exists k, f x k = Some y').
+      { eapply T_sem' with (ρ := fun _ => 0). exists ks.
+        rewrite T_completeness, <-T_single_rho_model; first apply Hk1; assumption. }
+
+      destruct Hf, H.
+      eapply f_func; eassumption.
+    - rewrite !sat_subst_single_model, !subst_comp, subst_T_bound. cbn.
+      rewrite !num_subst.
+      eapply T_completeness, Hkk; try assumption.
+  Qed.
 End value.
 
 
