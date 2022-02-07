@@ -83,6 +83,8 @@ Definition freturns {X Y} (f : X -> nat -> option Y) x y :=
   exists k, f x k = Some y.
 Definition fhalts {X Y} (f : X -> nat -> option Y) x :=
   exists y, freturns f x y.
+Definition fdiverges {X Y} (f : X -> nat -> option Y) x :=
+  forall k, f x k = None.
 
 Lemma stationize {X} (f : nat -> nat -> option X) :
   ffunctional f -> Sigma g, fstationary g /\ forall x y, freturns f x y <-> freturns g x y.
@@ -91,7 +93,8 @@ Proof.
   exists (fun x => mkstat (f x)).
   split.
   - intros x. apply mkstat_stationary.
-    exact (Hf x). (* apply does not work here for some reason *)
+    unfold ffunctional in Hf.
+    exact (Hf x).
   - intros x y. apply mkstat_correct. exact (Hf x).
 Qed.
 
@@ -105,7 +108,7 @@ Section CT.
   Arguments theta_univ : clear implicits.
 
 
-  Lemma CTspecial_halting_undec : ~decidable (fun d => fhalts (theta d) d).
+  Lemma special_halting_undec : ~decidable (fun d => fhalts (theta d) d).
   Proof.
     intros [f Hf].
     destruct (theta_univ (fun n _ => if f n then None else Some true)) as [c Hc].
@@ -126,7 +129,7 @@ Section CT.
     Hypothesis Hrepr : forall c, Sigma (repr : nat -> sentences),
       forall x, fhalts (theta c) x <-> provable (repr x).
 
-    Lemma CTwrepr_dec : decidable (fun c => fhalts (theta c) c).
+    Local Lemma halt_wrepr_dec : decidable (fun c => fhalts (theta c) c).
     Proof.
       destruct provable_decidable as [f Hf]; first assumption.
       exists (fun c => f (projT1 (Hrepr c) c)).
@@ -135,9 +138,9 @@ Section CT.
       rewrite Hr. apply Hf.
     Qed.
 
-    Lemma CTwrepr : False.
+    Lemma halt_incompleteness : False.
     Proof.
-      apply CTspecial_halting_undec, CTwrepr_dec.
+      apply special_halting_undec, halt_wrepr_dec.
     Qed.
   End halt.
 
@@ -148,7 +151,7 @@ Section CT.
     Hypothesis Hrepr : forall c, Sigma (repr : nat -> sentences),
       forall x, fhalts (theta c) x <-> provable (repr x).
     
-    Lemma CTwexpl : exists s, ~provable s /\ ~provable (neg s).
+    Lemma halt_expl_incompleteness : exists s, ~provable s /\ ~provable (neg s).
     Proof.
       destruct provable_enumerable as [prov Hprov].
       pose proof sentences_discrete as sentences_discrete.
@@ -203,10 +206,9 @@ Section CT.
     Qed.
   End halt_explicit.
 
-  Definition CGfunc (f : nat -> nat -> bool) := forall c x y,
+  Definition guess_func (f : nat -> nat -> bool) := forall c x y,
       (freturns (theta c) x y -> f c x = y).
-
-  Lemma CG_undec : ~exists f, CGfunc f.
+  Lemma guess_undec : ~exists f, guess_func f.
   Proof.
     intros [f Hf].
     destruct (theta_univ (fun c _ => Some (negb (f c c)))) as [c Hc].
@@ -218,6 +220,33 @@ Section CT.
     - enough (false = true) by discriminate.
       apply Hf, Hc. unfold freturns. rewrite H. eauto.
   Qed.
+  Lemma guess_func_diverge (f : nat -> nat -> nat -> option bool) :
+    (forall c x, freturns (theta c) x true -> freturns (f c) x true) ->
+    (forall c x, freturns (theta c) x false -> freturns (f c) x false) ->
+    (forall c, fstationary (f c)) ->
+    exists c x, fdiverges (f c) x.
+  Proof.
+    intros Hf1 Hf2 Hstat.
+    destruct (theta_univ (fun c k => match f c c k with
+                                  | Some b => Some (negb b)
+                                  | None => None
+                                  end)) as [c Hc].
+    { intros c k k' y. destruct (f c c k) as [[]|] eqn:H1, (f c c k') as [[]|] eqn:H2.
+      all: cbn; intros [= <-] Hk.
+      all: specialize (Hstat _ _ _ _ _ H1 Hk); congruence. }
+    exists c, c.
+    intros k. enough (forall b, f c c k <> Some b) by (destruct (f c c k); congruence).
+    intros b H.
+    enough (freturns (f c) c true /\ freturns (f c) c false) as [[k1 Hk1] [k2 Hk2]].
+    { assert (k1 >= k2 \/ k2 >= k1) as [Hk | Hk] by lia.
+      - specialize (Hstat _ _ _ _ _ Hk2 Hk). congruence.
+      - specialize (Hstat _ _ _ _ _ Hk1 Hk). congruence. }
+    destruct b; split.
+    - now exists k.
+    - apply Hf2, Hc. exists k. now rewrite H.
+    - apply Hf1, Hc. exists k. now rewrite H.
+    - now exists k.
+  Qed.
 
   Section guess.
     Variable fs : FS.
@@ -227,7 +256,7 @@ Section CT.
         forall x y, freturns (theta c) x y -> provable (repr x y) /\ provable (neg (repr x (negb y))).
     Arguments Hrepr : clear implicits.
 
-    Lemma CG_dec : exists f, CGfunc f.
+    Local Lemma guess_vrepr_dec : exists f, guess_func f.
     Proof.
       apply decidable_iff in provable_decidable as [prov_dec].
       exists (fun c x => if prov_dec (projT1 (Hrepr c) x true) then true else false).
@@ -238,20 +267,20 @@ Section CT.
       - reflexivity.
     Qed.
 
-    Lemma CTrepr : False.
+    Lemma guess_incompleteness : False.
     Proof.
-      apply CG_undec, CG_dec.
+      apply guess_undec, guess_vrepr_dec.
     Qed.
   End guess.
 
 
-  Section CTexpl.
+  Section guess_expl.
     Variable fs : FS.
 
     Hypothesis Hrepr : forall c, Sigma (repr : nat -> bool -> sentences),
       forall x y, freturns (theta c) x y -> provable (repr x y) /\ provable (neg (repr x (negb y))).
 
-    Lemma CGexpl : exists s, ~provable s /\ ~provable (neg s).
+    Lemma guess_expl_incompleteness : exists s, ~provable s /\ ~provable (neg s).
     Proof.
       destruct provable_enumerable as [prov Hprov].
       pose proof sentences_discrete as sentences_discrete.
@@ -302,7 +331,96 @@ Section CT.
         + destruct (@neg_no_fixpoint2 _ (r c true)); firstorder.
         + now destruct sentences_eqdec.
     Qed.
-  End CTexpl.
+  End guess_expl.
+
+  Section guess_insep.
+    Variable fs : FS.
+    Hypothesis provable_decidable : decidable provable.
+
+
+    Hypothesis Hrepr : exists r : nat -> nat -> sentences,
+      (forall c x, freturns (theta c) x true -> provable (r c x)) /\
+        (forall c x, freturns (theta c) x false -> provable (neg (r c x))).
+
+    Local Lemma guess_insep_dec : exists f, guess_func f.
+    Proof.
+      apply decidable_iff in provable_decidable as [prov_dec].
+      destruct Hrepr as (r & Hr1 & Hr2).
+      exists (fun c x => if prov_dec (r c x) then true else false).
+      intros c x [] Hret; destruct prov_dec as [H|H].
+      - easy.
+      - destruct H. now apply Hr1.
+      - edestruct consistent.
+        + apply H.
+        + apply Hr2, Hret.
+      - reflexivity.
+    Qed.
+    Lemma guess_insep_incompleteness : False.
+    Proof.
+      apply guess_undec, guess_insep_dec.
+    Qed.
+  End guess_insep.
+
+  Section guess_insep_expl.
+    Variable fs : FS.
+
+    Hypothesis Hrepr : exists r : nat -> nat -> sentences,
+      (forall c x, freturns (theta c) x true -> provable (r c x)) /\
+        (forall c x, freturns (theta c) x false -> provable (neg (r c x))).
+
+    (* TODO deduplicate proof with the one over CG *)
+    Lemma guess_insep_expl_incompleteness : exists s, ~provable s /\ ~provable (neg s).
+    Proof.
+      destruct Hrepr as (r & Hr1 & Hr2).
+      destruct provable_enumerable as [prov Hprov].
+      pose proof sentences_discrete as sentences_discrete.
+      apply discrete_iff in sentences_discrete as [sentences_eqdec].
+
+      unshelve evar (f : nat -> nat -> nat -> option bool).
+      { intros c x k.
+        destruct (prov k) as [p|]. 2: exact None.
+
+        destruct (sentences_eqdec p (r c x)).
+        1: exact (Some true).
+        destruct (sentences_eqdec p (neg (r c x))).
+        - exact (Some false).
+        - exact None. }
+
+      unshelve evar (g : nat -> nat -> option bool).
+      {
+        intros c k. destruct (f c c k) as [b|].
+        - exact (Some (negb b)).
+        - exact None.
+      }
+      destruct (@stationize _ g) as (g' & Hgstat & Hgcorr).
+      {
+        intros x k1 k2 y1 y2.
+        unfold g, f.
+        destruct (prov k1) eqn:Hk1, (prov k2) eqn:Hk2; try congruence.
+        repeat destruct sentences_eqdec; try congruence; subst.
+        all: destruct (consistent (r x x)); apply Hprov; eauto.
+      }
+
+      destruct (theta_univ g' Hgstat) as [c Hc].
+      exists (r c c).
+      split.
+      - intros Hp.
+        eapply consistent; first exact Hp.
+        apply Hprov in Hp as [k Hk].
+        apply Hr2, Hc, Hgcorr.
+        exists k. unfold g, f. rewrite Hk.
+        destruct sentences_eqdec; cbn; congruence.
+      - intros Hp.
+        apply (consistent (r c c)); last assumption.
+        apply Hprov in Hp as [k Hk].
+        apply Hr1, Hc, Hgcorr.
+        exists k. unfold g, f. rewrite Hk.
+        destruct sentences_eqdec.
+        + destruct (@neg_no_fixpoint2 _ (r c c)); firstorder.
+        + now destruct sentences_eqdec.
+    Qed.
+  End guess_insep_expl.
+
 
   Section CTsecond.
     Variable sentences : Type.
@@ -420,7 +538,8 @@ Section CTrepr.
 
 End CTrepr.
 
-Check CGexpl.
+Check guess_expl_incompleteness.
+Check guess_insep_incompleteness.
 
 From Undecidability.FOL.Util Require Import Syntax_facts FullDeduction FullDeduction_facts FullTarski FullTarski_facts Axiomatisations FA_facts Syntax.
 From Undecidability.FOL Require Import PA.
@@ -435,30 +554,32 @@ Proof.
   - apply List.In_nth_error.
   - intros [k Hk]. eapply List.nth_error_In, Hk.
 Qed.
+Lemma enumerable_PA_funcs : enumerable__T PA_funcs.
+Proof.
+  cbn. exists (fun k => match k with
+    | 0 => Some Zero
+    | 1 => Some Succ
+    | 2 => Some Plus
+    | _ => Some Mult
+    end).
+  intros [].
+  + now exists 0.
+  + now exists 1.
+  + now exists 2.
+  + now exists 3.
+Qed.
+
 
 Definition Qfs_intu : FS.
 Proof.
   eapply fs_fo with (T := Q) (peirce := intu).
   - apply list_theory_enumerable.
   - intros x y. decide equality.
-  - cbn. exists (fun k => match k with 
-    | 0 => Some Zero 
-    | 1 => Some Succ
-    | 2 => Some Plus 
-    | _ => Some Mult 
-    end).
-    intros [].
-    + now exists 0. 
-    + now exists 1. 
-    + now exists 2. 
-    + now exists 3. 
+  - apply enumerable_PA_funcs.
   - intros x y. decide equality.
-  - exists (fun k => Some Eq).
-    intros []. now exists 0.   
-  - intros H.
-    eapply tsoundness with (D := nat) (I := interp_nat) (rho := fun n => 0) in H.
-    + assumption.
-    + (* Q is subset of satisfiable formulas *) apply nat_is_Q_model. 
+  - exists (fun k => Some Eq). intros []. now exists 0.
+  - intros H. apply tsoundness with (I := interp_nat) (rho := fun n => 0) (1 := H).
+    apply nat_is_Q_model. (* Q is subset of satisfiable formulas *)
 Defined.
 Definition Qfs_class : (forall P, P \/ ~P) -> FS.
 Proof.
@@ -466,26 +587,13 @@ Proof.
   eapply fs_fo with (T := Q) (peirce := class).
   - apply list_theory_enumerable.
   - intros x y. decide equality.
-  - cbn. exists (fun k => match k with 
-    | 0 => Some Zero 
-    | 1 => Some Succ
-    | 2 => Some Plus 
-    | _ => Some Mult 
-    end).
-    intros [].
-    + now exists 0. 
-    + now exists 1. 
-    + now exists 2. 
-    + now exists 3. 
+  - apply enumerable_PA_funcs.
   - intros x y. decide equality.
   - exists (fun k => Some Eq).
     intros []. now exists 0.   
-  - intros H.
-    (* might be possible without assuming LEM *)
-    eapply tsoundness_class with (D := nat) (I := interp_nat) (rho := fun n => 0) in H.
+  - intros H. apply tsoundness_class with (I := interp_nat) (rho := fun n => 0) (2 := H).
     + assumption.
-    + assumption.
-    + apply nat_is_Q_model. 
+    + apply nat_is_Q_model.
 Defined.
 
 
@@ -503,7 +611,7 @@ Section Qexpl.
       forall x y, freturns (theta c) x y -> provable (repr x y) /\ provable (neg (repr x (negb y))).
   Lemma Qexpl : exists s, ~provable s /\ ~provable (neg s).
   Proof.
-    eapply CGexpl; eassumption.
+    eapply guess_expl_incompleteness; eassumption.
   Qed.
 End Qexpl.
 

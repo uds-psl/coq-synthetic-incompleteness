@@ -203,7 +203,7 @@ Section instantiation.
   Lemma bounded_closed phi :
     bounded 0 phi <-> closed phi.
   Proof.
-    unfold closed. destruct bounded_dec; intuition congruence.
+    unfold closed. now destruct bounded_dec.
   Qed.
   Lemma closed_dec phi :
     dec (closed phi).
