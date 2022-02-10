@@ -406,14 +406,14 @@ Section CT.
       split.
       - intros Hp.
         eapply consistent; first exact Hp.
-        apply Hprov in Hp as [k Hk].
         apply Hr2, Hc, Hgcorr.
+        apply Hprov in Hp as [k Hk].
         exists k. unfold g, f. rewrite Hk.
         destruct sentences_eqdec; cbn; congruence.
       - intros Hp.
         apply (consistent (r c c)); last assumption.
-        apply Hprov in Hp as [k Hk].
         apply Hr1, Hc, Hgcorr.
+        apply Hprov in Hp as [k Hk].
         exists k. unfold g, f. rewrite Hk.
         destruct sentences_eqdec.
         + destruct (@neg_no_fixpoint2 _ (r c c)); firstorder.

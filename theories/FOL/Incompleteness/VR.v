@@ -83,7 +83,7 @@ Section sigma.
     - apply II.
       eapply ExE.
       { apply Ctx; now left. }
-      cbn -[Qeq]. unfold "↑". fold ↑.
+      cbn. unfold "↑". fold ↑.
       change (List.map (subst_form ↑) Qeq) with Qeq.
       eapply ExE.
       { apply Ctx; now left. }
@@ -317,19 +317,6 @@ Section completeness.
   Hypothesis completeness : forall φ,
       Qeq ⊢C φ <-> forall (M : Type) (I : interp M) ρ, extensional I -> I ⊨=L Qeq -> ρ ⊨ φ.
 
-  Lemma exists_compression' φ : bounded 2 φ -> Δ0' φ -> exists ψ, Δ0' ψ /\ Qeq ⊢C (∃ ψ) <~> ∃∃φ.
-  Proof.
-    intros Hb Hd. exists (∃ ($0 ⧀ $1) ∧ ∃ ($0 ⧀ $2) ∧ φ).
-    split; first admit.
-    apply completeness. intros M I ρ Mext MQ.
-    split.
-    - admit.
-    - intros (x & y & Hxy).
-      eexists. exists x. split.
-      { cbn. exists y. rewrite Mext. reflexivity. }
-      exists y. split.
-      { cbn. exists x. admit. }
-  Abort.
 
   Lemma dec_completeness M (I : interp M) (QM : I ⊨=L Qeq) (Mext : extensional I) ρN ρM φ :
     Qdec φ -> interp_nat; ρN ⊨ φ <-> I; ρM ⊨ φ.
@@ -550,8 +537,14 @@ Section Qtrichotomy.
   Existing Instance PA_funcs_signature.
   Existing Instance PA_preds_signature.
 
-  Lemma Qdec_le x : Q ⊢C ∀ (num x ⧀ σ $0) ∨ ($0 ⧀ σ (num x)).
-  Proof. induction x. Admitted.
+  Lemma Qdec_le x : Qeq ⊢C (num x ⧀ σ $0) ∨ ($0 ⧀ σ (num x)).
+  Proof.
+    apply Σcompleteness.
+    - admit. (* Shold not appear here *)
+    - repeat constructor.
+    - cbn. intros ρ. admit.
+    (* By Σcompleteness *)
+  Admitted.
 End Qtrichotomy.
 
 Module value_disjoint. Section value_disjoint.
