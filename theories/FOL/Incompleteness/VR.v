@@ -122,15 +122,12 @@ Section sigma.
 
   Lemma exists_equiv φ ψ : Qeq ⊢C φ ~> ψ -> (∃φ :: Qeq) ⊢C (∃ψ).
   Proof.
-    intros H.
-    eapply ExE.
+    intros H. eapply ExE.
     { apply Ctx. now left. }
-    cbn.
-    apply (ExI $0).
+    cbn. apply (ExI $0).
     replace (ψ[_][_]) with (ψ[var]); first last.
     { rewrite subst_comp. apply subst_ext. now intros [|k]. }
-    rewrite subst_var.
-    eapply IE.
+    rewrite subst_var. eapply IE.
     { eapply Weak; first apply H. now do 2 right. }
     now apply Ctx.
   Qed.
@@ -149,18 +146,15 @@ Section sigma.
     - destruct (@exists_compression_2 φ' HΔ) as (ψ & HΔψ & Hψ).
       exists ψ. split; first easy.
       apply CI.
-      + apply II.
-        eapply IE.
+      + apply II. eapply IE.
         { eapply CE1, Weak; first apply Hψ. now right. }
         eapply exists_equiv, CE1, Hφ'.
-      + apply II.
-        eapply IE with (phi := ∃∃φ'); first last.
+      + apply II. eapply IE with (phi := ∃∃φ'); first last.
         { eapply IE.
           - eapply CE2, Weak; first apply Hψ. now right.
           - now apply Ctx. }
         eapply Weak with (A := Qeq); last now right.
-        apply II. apply exists_equiv.
-        eapply CE2, Hφ'.
+        apply II. apply exists_equiv. eapply CE2, Hφ'.
   Qed.
 
   Lemma Σ1_exist_times φ : Σ1 φ -> exists n ψ, Δ0 ψ /\ φ = exist_times n ψ.
@@ -168,6 +162,11 @@ Section sigma.
     induction 1 as [φ H|φ H (n & ψ & HΔ & Hψ)].
     - now exists 0, φ.
     - exists (S n), ψ. now rewrite Hψ.
+  Qed.
+  Lemma Σ1_compression φ : Σ1 φ -> exists ψ, Δ0 ψ /\ Qeq ⊢C φ <~> ∃ψ.
+  Proof.
+    intros (n & ψ & HΔ & ->)%Σ1_exist_times.
+    now apply exists_compression.
   Qed.
 
   Lemma Q_sound φ : (forall P, P \/ ~P) -> Qeq ⊢C φ -> interp_nat ⊨= φ.
@@ -575,8 +574,8 @@ Module value_disjoint. Section value_disjoint.
   Hypothesis (φ1_bounded : bounded 2 φ1) (φ2_bounded : bounded 2 φ2).
   Hypothesis (φ1_dec : forall x k, Qdec (φ1[num x .: (num k) ..]))
              (φ2_dec : forall x k, Qdec (φ2[num x .: (num k) ..])).
-  Hypothesis (φ1_sem : forall x, P1 x <-> Qeq ⊢C ∃ φ1[(num x) ..])
-             (φ2_sem : forall x, P2 x <-> Qeq ⊢C ∃ φ2[(num x) ..]).
+  Hypothesis (φ1_syn : forall x, P1 x <-> Qeq ⊢C ∃ φ1[(num x) ..])
+             (φ2_syn : forall x, P2 x <-> Qeq ⊢C ∃ φ2[(num x) ..]).
 
   Definition φ1' := φ1 ∧ ∀ $0 ⧀ σ $2 ~> φ2[$1 .: $0 ..] ~> ⊥.
   Definition φ2' := φ2 ∧ ∀ $0 ⧀ σ $2 ~> φ1[$1 .: $0 ..] ~> ⊥.
