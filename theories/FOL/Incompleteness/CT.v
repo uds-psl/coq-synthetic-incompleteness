@@ -5,11 +5,13 @@ From Undecidability.Shared Require Import Dec embed_nat.
 Require Import Lia.
 
 
+
 Notation "'Sigma' x .. y , p" :=
   (sigT (fun x => .. (sigT (fun y => p)) ..))
     (at level 200, x binder, right associativity,
      format "'[' 'Sigma'  '/  ' x  ..  y ,  '/  ' p ']'")
   : type_scope.
+
 
 Definition part_functional {X} (f : nat -> option X) :=
   forall k1 k2 y1 y2, f k1 = Some y1 -> f k2 = Some y2 -> y1 = y2.
@@ -197,7 +199,7 @@ Section CT.
       split.
       - intros Hp. apply (consistent (r c)).
         + assumption.
-        + apply H, Hr, Hp.  
+        + apply H, Hr, Hp.
       - intros Hp. apply (consistent (r c)).
         + apply Hr, H, Hp.
         + assumption.   

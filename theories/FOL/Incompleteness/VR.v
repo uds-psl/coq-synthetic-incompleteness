@@ -5,10 +5,6 @@ From Undecidability.Shared Require Import Dec embed_nat.
 From Undecidability.FOL.Util Require Import Syntax_facts FullDeduction FullDeduction_facts FullTarski FullTarski_facts Axiomatisations FA_facts Syntax.
 From Undecidability.FOL Require Import PA.
 
-Print prv.
-
-
-
 (* Notation for satisfying list theories *)
 Notation "I ⊨=L T" := (forall psi, List.In psi T -> I ⊨= psi) (at level 20).
 (* Notation for explicitely giving model *)
@@ -30,81 +26,46 @@ Section sigma.
 
   Existing Instance falsity_on.
 
-  (* TODO need to remove ff flags from these structures to ease inductions *)
-
-  Hypothesis LEM : forall P, P \/ ~P.
-
-  (* Definitions stolen from Marc *)
   Inductive Δ0 : form -> Prop :=
   | Delta_fal : Δ0 ⊥
   | Delta_eq : forall t s, Δ0 (t == s)
   | Delta_lt : forall t s, Δ0 (t ⧀ s)
   | Delta_Conj : forall α β, Δ0 α -> Δ0 β -> Δ0 (α ∧ β)
   | Delta_Disj : forall α β, Δ0 α -> Δ0 β -> Δ0 (α ∨ β)
-  | Delta_Impl : forall α β, Δ0 α -> Δ0 β -> Δ0 (α ~> β).
-
-  Check exist_times.
-  Fixpoint oplus_times n : term :=
-    match n with
-    | 0 => zero
-    | 1 => $0
-    | S n => oplus_times n ⊕ $n
-    end.
-
-  Inductive Δ0' : form -> Prop :=
-  | Delta_id : forall α, Δ0 α -> Δ0' α
-  | Delta_bounded_exist : forall α t, Δ0' α -> Δ0' (∃ ($0 ⧀ t`[↑]) ∧ α)
-  | Delta_bounded_exist_comm : forall α t, Δ0' α -> Δ0' (∃ ($0 ⧀comm t`[↑]) ∧ α)
-  | Delta_bounded_forall : forall α t, Δ0' α -> Δ0' (∀ $0 ⧀ t`[↑] ~> α)
-  (*| Delta_bounded_exist_times : forall α n t, Δ0' α -> Δ0' (exist_times n (oplus_times n ⧀ t`[↑]) ∧ α)*).
+  | Delta_Impl : forall α β, Δ0 α -> Δ0 β -> Δ0 (α ~> β)
+  | Delta_bounded_exist : forall α t, Δ0 α -> Δ0 (∃ ($0 ⧀ t`[↑]) ∧ α)
+  | Delta_bounded_exist_comm : forall α t, Δ0 α -> Δ0 (∃ ($0 ⧀comm t`[↑]) ∧ α)
+  | Delta_bounded_forall : forall α t, Δ0 α -> Δ0 (∀ $0 ⧀ t`[↑] ~> α).
 
   Inductive Σ1 : form -> Prop :=
-  | Sigma_Delta : forall α, Δ0' α -> Σ1 α
+  | Sigma_Delta : forall α, Δ0 α -> Σ1 α
   | Sigma_exists : forall α, Σ1 α -> Σ1 (∃ α).
   Inductive Π1 : form -> Prop :=
-  | Pi_Delta : forall α, Δ0' α -> Π1 α
+  | Pi_Delta : forall α, Δ0 α -> Π1 α
   | Pi_forall : forall α, Π1 α -> Π1 (∀ α).
 
-
-
-  Lemma PNF_conj φ1 φ2 : Π1 φ1 -> Π1 φ2 -> exists ψ, Π1 ψ /\ Qeq ⊢C φ1 ∧ φ2 <~> ψ.
+  Lemma subst_term_up_comp s sigma : s`[↑]`[up sigma] = s`[sigma]`[↑].
   Proof.
-  Admitted.
-  Lemma PNF_impl φ1 φ2 : Π1 φ1 -> Σ1 φ2 -> exists ψ, Σ1 ψ /\ Qeq ⊢C (φ1 ~> φ2) <~> ψ.
-  Proof. Admitted.
-
-  Lemma exists_compression' φ : bounded 2 φ -> Δ0' φ -> exists ψ, Δ0' ψ /\ Qeq ⊢C (∃ ψ) <~> ∃∃φ.
+    rewrite !subst_term_comp. now apply subst_term_ext.
+  Qed.
+  Lemma Δ0_subst φ sigma : Δ0 φ -> Δ0 φ[sigma].
   Proof.
-    intros Hb Hd.
-    exists (∃ ($0 ⧀ $1) ∧ ∃ ($0 ⧀comm $2) ∧ φ).
+    induction 1 in sigma |-*; cbn.
+    all: rewrite ?subst_term_up_comp; now constructor.
+  Qed.
+  Lemma Σ1_subst φ sigma : Σ1 φ -> Σ1 φ[sigma].
+  Proof.
+    induction 1 in sigma |-*; cbn; auto using Σ1, Δ0_subst.
+  Qed.
+
+  Lemma exists_compression_2 φ : Δ0 φ -> exists ψ, Δ0 ψ /\ Qeq ⊢C (∃∃φ) <~> (∃ψ).
+  Proof.
+    intros Hd.
+    exists (∃ ($0 ⧀ $1) ∧ ∃ ($0 ⧀comm $2) ∧ φ[up (up (S >> var))]).
     split.
-    { apply (Delta_bounded_exist $0), (Delta_bounded_exist_comm $1), Hd. }
+    { change $1 with ($0`[↑]). change $2 with ($1`[↑]).
+      repeat constructor. apply Δ0_subst, Hd. }
     apply CI.
-    - apply II.
-      eapply ExE.
-      { apply Ctx; now left. }
-      cbn. unfold "↑". fold ↑.
-      change (List.map (subst_form ↑) Qeq) with Qeq.
-      eapply ExE.
-      { apply Ctx; now left. }
-      cbn -[Qeq]. unfold "↑". fold ↑.
-      change (List.map (subst_form ↑) Qeq) with Qeq.
-      eapply ExE.
-      { eapply CE2, Ctx. now left. }
-      cbn -[Qeq]. unfold "↑". fold ↑.
-      change (List.map (subst_form ↑) Qeq) with Qeq.
-      eapply ExI with (t := $1). cbn -[Qeq].
-      eapply ExI with (t := $0). cbn -[Qeq].
-      eapply IE.
-      2: { eapply CE2, Ctx. now left. }
-      eapply Weak with (A := Qeq).
-      2: { intros f H. now do 4 right. }
-      apply II. rewrite !subst_comp.
-      apply Ctx. left.
-      rewrite <-subst_var at 1.
-      eapply bounded_subst.
-      + apply Hb.
-      + intros [|[|k]] H; cbn; reflexivity + lia.
     - apply II.
       eapply ExE.
       { apply Ctx; now left. }
@@ -126,32 +87,92 @@ Section sigma.
       { apply ExI with (t := $0). cbn -[Qeq].
         eapply AllE with (t := σ $1 ⊕ $0) (phi := $0 == $0).
         apply Ctx. right. now left. }
-
       apply ExI with (t := $0).
       cbn -[Qeq]. unfold "↑". fold ↑.
       apply CI.
       { apply ExI with (t := $1). cbn -[Qeq].
         eapply AllE with (t := σ $1 ⊕ $0) (phi := $0 == $0).
         apply Ctx. right. now left. }
-      rewrite !subst_comp. erewrite bounded_subst; first instantiate (1 := var).
+      rewrite !subst_comp. erewrite subst_ext; first instantiate (1 := var).
       + rewrite subst_var. now apply Ctx.
-      + exact Hb.
-      + intros [|[|k]] Hk; cbn; reflexivity + lia.
+      + now intros [|[|[|n]]]; cbn.
+    - apply II.
+      eapply ExE.
+      { apply Ctx; now left. }
+      cbn -[Qeq]. unfold "↑". fold ↑.
+      change (List.map (subst_form ↑) Qeq) with Qeq.
+      eapply ExE.
+      { apply Ctx; now left. }
+      cbn -[Qeq]. unfold "↑". fold ↑.
+      change (List.map (subst_form ↑) Qeq) with Qeq.
+      eapply ExE.
+      { eapply CE2, Ctx. now left. }
+      cbn -[Qeq]. unfold "↑". fold ↑.
+      change (List.map (subst_form ↑) Qeq) with Qeq.
+      eapply ExI with (t := $1). cbn -[Qeq].
+      eapply ExI with (t := $0). cbn -[Qeq].
+      eapply IE.
+      2: { eapply CE2, Ctx. now left. }
+      eapply Weak with (A := Qeq).
+      2: { intros f H. now do 4 right. }
+      apply II. rewrite !subst_comp.
+      apply Ctx. left.
+      apply subst_ext. now intros [|[|[|n]]].
   Qed.
-  Lemma exists_compression φ n : bounded n φ -> Δ0' φ ->
-                                 exists ψ, Δ0' ψ /\ Qeq ⊢C (∃ ψ) <~> exist_times n φ.
+
+  Lemma exists_equiv φ ψ : Qeq ⊢C φ ~> ψ -> (∃φ :: Qeq) ⊢C (∃ψ).
   Proof.
-    induction n as [|n IH] in φ |-*; intros Hb Hd.
+    intros H.
+    eapply ExE.
+    { apply Ctx. now left. }
+    cbn.
+    apply (ExI $0).
+    replace (ψ[_][_]) with (ψ[var]); first last.
+    { rewrite subst_comp. apply subst_ext. now intros [|k]. }
+    rewrite subst_var.
+    eapply IE.
+    { eapply Weak; first apply H. now do 2 right. }
+    now apply Ctx.
+  Qed.
+
+  Lemma exists_compression φ n : Δ0 φ ->
+                                 exists ψ, Δ0 ψ /\ Qeq ⊢C exist_times n φ <~> ∃ ψ.
+  Proof.
+    intros Hd. induction n as [|n (φ' & HΔ & Hφ')].
     all: cbn [exist_times iter].
-    - exists φ[↑]. cbn [exist_times iter]. admit.
-  Admitted.
+    - exists φ[↑]. split; first now apply Δ0_subst.
+      apply CI.
+      + apply II. apply (ExI $0). apply Ctx. left.
+        rewrite subst_comp, <-subst_var at 1. now apply subst_ext.
+      + apply II. eapply ExE; first (apply Ctx; now left).
+        apply Ctx. now left.
+    - destruct (@exists_compression_2 φ' HΔ) as (ψ & HΔψ & Hψ).
+      exists ψ. split; first easy.
+      apply CI.
+      + apply II.
+        eapply IE.
+        { eapply CE1, Weak; first apply Hψ. now right. }
+        eapply exists_equiv, CE1, Hφ'.
+      + apply II.
+        eapply IE with (phi := ∃∃φ'); first last.
+        { eapply IE.
+          - eapply CE2, Weak; first apply Hψ. now right.
+          - now apply Ctx. }
+        eapply Weak with (A := Qeq); last now right.
+        apply II. apply exists_equiv.
+        eapply CE2, Hφ'.
+  Qed.
 
-
-  Lemma Σcompleteness : forall φ, Σ1 φ -> interp_nat ⊨= φ -> Qeq ⊢C φ.
-  Proof. Admitted. (* WIP by Marc *)
-  Lemma Q_sound φ : Qeq ⊢C φ -> interp_nat ⊨= φ.
+  Lemma Σ1_exist_times φ : Σ1 φ -> exists n ψ, Δ0 ψ /\ φ = exist_times n ψ.
   Proof.
-    intros H ρ. eapply soundness_class.
+    induction 1 as [φ H|φ H (n & ψ & HΔ & Hψ)].
+    - now exists 0, φ.
+    - exists (S n), ψ. now rewrite Hψ.
+  Qed.
+
+  Lemma Q_sound φ : (forall P, P \/ ~P) -> Qeq ⊢C φ -> interp_nat ⊨= φ.
+  Proof.
+    intros LEM H ρ. eapply soundness_class.
     - assumption.
     - eassumption.
     - intros psi HQ.
@@ -303,8 +324,6 @@ Section Qmodel.
         exists d. cbn. rewrite add_rec. congruence.
   Qed.
 End Qmodel.
-
-
 Section completeness.
   Existing Instance PA_funcs_signature.
   Existing Instance PA_preds_signature.
@@ -538,13 +557,7 @@ Section Qtrichotomy.
   Existing Instance PA_preds_signature.
 
   Lemma Qdec_le x : Qeq ⊢C (num x ⧀ σ $0) ∨ ($0 ⧀ σ (num x)).
-  Proof.
-    apply Σcompleteness.
-    - admit. (* Shold not appear here *)
-    - repeat constructor.
-    - cbn. intros ρ. admit.
-    (* By Σcompleteness *)
-  Admitted.
+  Proof. Admitted.
 End Qtrichotomy.
 
 Module value_disjoint. Section value_disjoint.
@@ -553,15 +566,17 @@ Module value_disjoint. Section value_disjoint.
 
   Existing Instance class.
 
+  Hypothesis Σcompleteness : forall φ, bounded 0 φ -> Σ1 φ -> interp_nat ⊨= φ -> Qeq ⊢C φ.
+
   Variable P1 P2 : nat -> Prop.
   Hypothesis P_disjoint : forall x, P1 x -> P2 x -> False.
 
   Variable φ1 φ2 : form.
   Hypothesis (φ1_bounded : bounded 2 φ1) (φ2_bounded : bounded 2 φ2).
   Hypothesis (φ1_dec : forall x k, Qdec (φ1[num x .: (num k) ..]))
-              (φ2_dec : forall x k, Qdec (φ2[num x .: (num k) ..])).
+             (φ2_dec : forall x k, Qdec (φ2[num x .: (num k) ..])).
   Hypothesis (φ1_sem : forall x, P1 x <-> Qeq ⊢C ∃ φ1[(num x) ..])
-              (φ2_sem : forall x, P2 x <-> Qeq ⊢C ∃ φ2[(num x) ..]).
+             (φ2_sem : forall x, P2 x <-> Qeq ⊢C ∃ φ2[(num x) ..]).
 
   Definition φ1' := φ1 ∧ ∀ $0 ⧀ σ $2 ~> φ2[$1 .: $0 ..] ~> ⊥.
   Definition φ2' := φ2 ∧ ∀ $0 ⧀ σ $2 ~> φ1[$1 .: $0 ..] ~> ⊥.
@@ -708,10 +723,13 @@ Section value.
 
   Hypothesis LEM : forall P, P \/ ~P.
 
+  Hypothesis Σcompleteness : forall φ, bounded 0 φ -> Σ1 φ -> interp_nat ⊨= φ -> Qeq ⊢C φ.
 
-  Lemma completeness_equiv φ1 φ2 : Σ1 φ2 -> Qeq ⊢C φ1 <~> φ2 -> interp_nat ⊨= φ1 -> Qeq ⊢C φ1.
+
+  Lemma completeness_equiv φ1 φ2 :
+    bounded 0 φ2 -> Σ1 φ2 -> Qeq ⊢C φ1 <~> φ2 -> interp_nat ⊨= φ1 -> Qeq ⊢C φ1.
   Proof.
-    intros Hs Hequiv Hnat.
+    intros Hb Hs Hequiv Hnat.
     enough (Qeq ⊢C φ2) as H.
     { eapply IE; last exact H.
       eapply CE2. apply Hequiv. }
@@ -721,6 +739,13 @@ Section value.
     cbn in Hequiv.
     apply Hequiv, Hnat.
   Qed.
+
+
+  Lemma PNF_conj φ1 φ2 : Π1 φ1 -> Π1 φ2 -> exists ψ, Π1 ψ /\ Qeq ⊢C φ1 ∧ φ2 <~> ψ.
+  Proof.
+  Admitted.
+  Lemma PNF_impl φ1 φ2 : Π1 φ1 -> Σ1 φ2 -> exists ψ, Σ1 ψ /\ Qeq ⊢C (φ1 ~> φ2) <~> ψ.
+  Proof. Admitted.
 
 
   Variable (f : nat -> nat).
@@ -755,7 +780,7 @@ Section value.
   Lemma CT_functional x y y' : Qeq ⊢C ϕΠ' x y ∧ ϕΠ' x y' ~> num y == num y'.
   Proof.
     apply II.
-    destruct (@PNF_conj LEM (ϕΠ' x y) (ϕΠ' x y')) as (ψ1 & Hb1 & Hc1); try apply ϕΠ_Π.
+    destruct (@PNF_conj (ϕΠ' x y) (ϕΠ' x y')) as (ψ1 & Hb1 & Hc1); try apply ϕΠ_Π.
     apply IE with (phi := ψ1); first last.
     { eapply IE.
       - eapply CE1. apply Weak with (A := Qeq); last auto. eapply Hc1.
@@ -763,12 +788,13 @@ Section value.
     }
     apply Weak with (A := Qeq); last auto.
 
-    destruct (@PNF_impl LEM ψ1 (num y == num y')) as (ψ2 & Hs2 & Hc2).
+    destruct (@PNF_impl ψ1 (num y == num y')) as (ψ2 & Hs2 & Hc2).
     { assumption. }
     { repeat constructor. }
 
     eapply completeness_equiv; try eassumption.
-    intros rho Hψ1.
+    (* TODO had to add closedness condition here *)
+    (*intros rho Hψ1.
 
     eapply Q_sound with (rho := rho) in Hc1 as [Hc1 Hc1']; last assumption.
     cbn in Hc1'. destruct (Hc1' Hψ1) as [H1 H2].
@@ -776,8 +802,8 @@ Section value.
     unfold R in H1, H2.
 
     cbn. rewrite !eval_num.
-    congruence.
-  Qed.
+    congruence.*)
+  (*Qed.*) Abort.
 
   Lemma VR_total x y : f x = y -> Qeq ⊢C ϕΠ' x y /\ forall y', y <> y' -> Qeq ⊢C ¬ϕΠ' x y'.
   Proof.
@@ -787,7 +813,8 @@ Section value.
     apply II.
     eapply IE with (phi := num y == num y').
     { apply Weak with (A := Qeq); last auto.
-      apply Σcompleteness; first assumption.
+      (* TODO as above *)
+      (*apply Σcompleteness; first assumption.
       - repeat constructor.
       - intros ρ. cbn. rewrite !eval_num. apply Hy.
     }
@@ -796,6 +823,6 @@ Section value.
     eapply CI.
     - eapply Weak with (A := Qeq); eauto.
     - apply Ctx. auto.
-  Qed.
+  Qed.*) Abort.
 
 End value.
