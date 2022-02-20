@@ -277,6 +277,13 @@ FOL/Util/Abstract.v
 
 FOL/Incompleteness/FS.v
 FOL/Incompleteness/CT.v
+FOL/Incompleteness/VR.v
+
+FOL/Proofmode/ProofMode.v
+FOL/Proofmode/StringToIdent.v
+FOL/Proofmode/Theories.v
+FOL/Proofmode/Hoas.v
+
 
 MinskyMachines/MMA.v            
 

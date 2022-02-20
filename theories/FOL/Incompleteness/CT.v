@@ -735,7 +735,7 @@ Section Q_CT_val_total.
       apply Ctx. auto.
   Qed.
 
-  Lemma num_bound n : bounded_t 0 (num n).
+  Lemma num_bound n k : bounded_t k (num n).
   Proof.
     induction n; cbn; constructor.
     - intros t []%Vectors.In_nil.
