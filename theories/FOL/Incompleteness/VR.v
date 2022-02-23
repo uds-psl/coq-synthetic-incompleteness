@@ -14,9 +14,12 @@ Notation "I ; rho '⊨' phi" := (@sat _ _ _ I _ rho phi) (at level 20, rho at ne
 (* NOTE this definition requires extensionality of the model *)
 Notation "x 'i⧀' y"  := (exists k, y = (iσ x) i⊕ k) (at level 42) : PA_Notation.
 (* Overwriting notation from PA.v to be useful in any way *)
+(* Adding notation for <= *)
 Notation "x '⧀' y"  := (∃ y`[↑] == ((σ x`[↑]) ⊕ $0)) (at level 42) : PA_Notation.
+Notation "x '⧀=' y"  := (∃ y`[↑] == (x`[↑] ⊕ $0)) (at level 42) : PA_Notation.
 (* I need another oless *)
-Notation "x '⧀comm' y"  := (∃ y`[↑] == (σ $0 ⊕ x`[↑])) (at level 42) : PA_Notation.
+Notation "x '⧀comm' y"  := (∃ y`[↑] == ($0 ⊕ x`[↑])) (at level 42) : PA_Notation.
+Notation "x '⧀=comm' y"  := (∃ y`[↑] == ($0 ⊕ x`[↑])) (at level 42) : PA_Notation.
 
 From Equations Require Import Equations DepElim.
 From Undecidability.FOL.Proofmode Require Import Theories ProofMode Hoas.
@@ -57,6 +60,7 @@ Notation "x '⊕' y" := (bFunc Plus (Vector.cons bterm x 1 (Vector.cons bterm y 
 Notation "x '⊗' y" := (bFunc Mult (Vector.cons bterm x 1 (Vector.cons bterm y 0 (Vector.nil bterm))) ) (at level 38) : hoas_scope. 
 Notation "x '==' y" := (bAtom Eq (Vector.cons bterm x 1 (Vector.cons bterm y 0 (Vector.nil bterm))) ) (at level 40) : hoas_scope.
 Notation "x '⧀' y"  := (∃' z, y == ((σ x) ⊕ z))%hoas (at level 42) : hoas_scope.
+Notation "x '⧀=' y"  := (∃' z, y == (x ⊕ z))%hoas (at level 42) : hoas_scope.
 Ltac custom_simpl ::= try rewrite ?num_subst.
 
 Section sigma.
@@ -71,12 +75,13 @@ Section sigma.
   | Delta_fal : Δ0 ⊥
   | Delta_eq : forall t s, Δ0 (t == s)
   | Delta_lt : forall t s, Δ0 (t ⧀ s)
+  | Delta_le : forall t s, Δ0 (t ⧀= s)
   | Delta_Conj : forall α β, Δ0 α -> Δ0 β -> Δ0 (α ∧ β)
   | Delta_Disj : forall α β, Δ0 α -> Δ0 β -> Δ0 (α ∨ β)
   | Delta_Impl : forall α β, Δ0 α -> Δ0 β -> Δ0 (α ~> β)
-  | Delta_bounded_exist : forall α t, Δ0 α -> Δ0 (∃ ($0 ⧀ t`[↑]) ∧ α)
-  | Delta_bounded_exist_comm : forall α t, Δ0 α -> Δ0 (∃ ($0 ⧀comm t`[↑]) ∧ α)
-  | Delta_bounded_forall : forall α t, Δ0 α -> Δ0 (∀ $0 ⧀ t`[↑] ~> α).
+  | Delta_bounded_exist : forall α t, Δ0 α -> Δ0 (∃ ($0 ⧀= t`[↑]) ∧ α)
+  | Delta_bounded_exist_comm : forall α t, Δ0 α -> Δ0 (∃ ($0 ⧀=comm t`[↑]) ∧ α)
+  | Delta_bounded_forall : forall α t, Δ0 α -> Δ0 (∀ $0 ⧀= t`[↑] ~> α).
 
   Inductive Σ1 : form -> Prop :=
   | Sigma_exists : forall α, Σ1 α -> Σ1 (∃ α)
@@ -102,7 +107,7 @@ Section sigma.
   Lemma exists_compression_2 φ : Δ0 φ -> exists ψ, Δ0 ψ /\ Qeq ⊢C (∃∃φ) <~> (∃ψ).
   Proof.
     intros Hd.
-    exists (∃ ($0 ⧀ $1) ∧ ∃ ($0 ⧀comm $2) ∧ φ[up (up (S >> var))]).
+    exists (∃ ($0 ⧀= $1) ∧ ∃ ($0 ⧀=comm $2) ∧ φ[up (up (S >> var))]).
     split.
     { change $1 with ($0`[↑]). change $2 with ($1`[↑]).
       repeat constructor. apply Δ0_subst, Hd. }
@@ -120,19 +125,19 @@ Section sigma.
       2: { intros ϕ [<-|H].
            - now left.
            - now do 3 right. }
-      apply ExI with (t := σ $1 ⊕ $0).
+      apply ExI with (t := $1 ⊕ $0).
       cbn -[Qeq]. unfold "↑". fold ↑.
       apply ExI with (t := $1).
       cbn -[Qeq]. unfold "↑". fold ↑.
       apply CI.
       { apply ExI with (t := $0). cbn -[Qeq].
-        eapply AllE with (t := σ $1 ⊕ $0) (phi := $0 == $0).
+        eapply AllE with (t := $1 ⊕ $0) (phi := $0 == $0).
         apply Ctx. right. now left. }
       apply ExI with (t := $0).
       cbn -[Qeq]. unfold "↑". fold ↑.
       apply CI.
       { apply ExI with (t := $1). cbn -[Qeq].
-        eapply AllE with (t := σ $1 ⊕ $0) (phi := $0 == $0).
+        eapply AllE with (t := $1 ⊕ $0) (phi := $0 == $0).
         apply Ctx. right. now left. }
       rewrite !subst_comp. erewrite subst_ext; first instantiate (1 := var).
       + rewrite subst_var. now apply Ctx.
@@ -222,6 +227,21 @@ Section sigma.
     intros H ρ. eapply soundness.
     - eassumption.
     - apply nat_is_Q_model. 
+  Qed.
+  Lemma bounded_subst_1 φ ρ : bounded 1 φ -> φ[ρ] = φ[(ρ 0) ..].
+  Proof.
+    intros H. eapply bounded_subst; first eassumption.
+    intros [|k]; easy + lia.
+  Qed.
+  Lemma bounded_subst_2 φ ρ : bounded 2 φ -> φ[ρ] = φ[ρ 0 .: (ρ 1) ..].
+  Proof.
+    intros H. eapply bounded_subst; first eassumption.
+    intros [|[|k]]; easy + lia.
+  Qed.
+  Lemma bounded_subst_3 φ ρ : bounded 3 φ -> φ[ρ] = φ[ρ 0 .: ρ 1 .: (ρ 2) ..].
+  Proof.
+    intros H. eapply bounded_subst; first eassumption.
+    intros [|[|[|k]]]; easy + lia.
   Qed.
 End sigma.
 
@@ -385,7 +405,7 @@ Section Qsat_single.
   Qed.
 End Qsat_single.
 
-Section completeness.
+Module completeness. Section completeness.
   Existing Instance PA_funcs_signature.
   Existing Instance PA_preds_signature.
 
@@ -425,14 +445,14 @@ Section completeness.
     Definition φ1' := φ1 ∧ ∀ $0 ⧀ $2 ~> φ2[$1 .: $0 ..] ~> ⊥.
     Definition φ2' := φ2 ∧ ∀ $0 ⧀ $2 ~> φ1[$1 .: $0 ..] ~> ⊥.
 
-    Lemma φ1_bounded_subst ρ : φ1[ρ] = φ1[ρ 0 .: (ρ 1) ..].
-    Proof.
-      eapply bounded_subst; first apply φ1_bounded. intros [|[|k]]; easy + lia.
-    Qed.
-    Lemma φ2_bounded_subst ρ : φ2[ρ] = φ2[ρ 0 .: (ρ 1) ..].
-    Proof.
-      eapply bounded_subst; first apply φ2_bounded. intros [|[|k]]; easy + lia.
-    Qed.
+    (* Lemma φ1_bounded_subst ρ : φ1[ρ] = φ1[ρ 0 .: (ρ 1) ..]. *)
+    (* Proof. *)
+    (*   eapply bounded_subst; first apply φ1_bounded. intros [|[|k]]; easy + lia. *)
+    (* Qed. *)
+    (* Lemma φ2_bounded_subst ρ : φ2[ρ] = φ2[ρ 0 .: (ρ 1) ..]. *)
+    (* Proof. *)
+    (*   eapply bounded_subst; first apply φ2_bounded. intros [|[|k]]; easy + lia. *)
+    (* Qed. *)
 
     Lemma φ1'_bounded : bounded 2 φ1'.
     Proof using φ1_bounded.
@@ -452,14 +472,14 @@ Section completeness.
     Proof.
       rewrite φ1_sem. cbn.
       setoid_rewrite sat_single_nat. setoid_rewrite subst_comp.
-      setoid_rewrite φ1_bounded_subst. cbn.
+      setoid_rewrite (bounded_subst_2 _ φ1_bounded).
       setoid_rewrite num_subst. reflexivity.
     Qed.
     Lemma φ2_sem' x ρ : P2 x <-> exists k, interp_nat; ρ ⊨ φ2[num x .: (num k) ..].
     Proof.
       rewrite φ2_sem. cbn.
       setoid_rewrite sat_single_nat. setoid_rewrite subst_comp.
-      setoid_rewrite φ2_bounded_subst. cbn.
+      setoid_rewrite (bounded_subst_2 _ φ2_bounded).
       setoid_rewrite num_subst. reflexivity.
     Qed.
 
@@ -468,14 +488,14 @@ Section completeness.
       intros H. apply completeness. intros M I ρ Mext QM.
       assert (exists k, (fun _ => 0) ⊨ φ1[num x .: (num k) ..]) as [k Hk] by now apply φ1_sem'.
       exists (iμ k). split.
-      - rewrite sat_single_PA, subst_comp, φ1_bounded_subst. cbn.
+      - rewrite sat_single_PA, subst_comp, bounded_subst_2; last assumption. cbn.
         rewrite num_subst. eapply Qdec_absoluteness; eauto.
       - cbn. intros k' [d Hd] H2.
 
         assert (standard k') as [k'' <-].
         { unshelve eapply standard_le; try auto. exists d. now apply Mext. }
 
-        rewrite !sat_single_PA, !subst_comp, φ2_bounded_subst in H2. cbn in H2.
+        rewrite !sat_single_PA, !subst_comp, bounded_subst_2 in H2; last assumption. cbn in H2.
         rewrite !num_subst in H2.
 
         enough (P2 x) by (eapply P_disjoint; eassumption).
@@ -491,12 +511,12 @@ Section completeness.
         { setoid_rewrite Mext. apply nonstandard_large; assumption. }
         intros [k' <-].
 
-        rewrite sat_single_PA in Hk1. rewrite !subst_comp, φ1_bounded_subst in Hk1. cbn in Hk1.
+        rewrite sat_single_PA in Hk1. rewrite !subst_comp, bounded_subst_2 in Hk1; last assumption. cbn in Hk1.
         rewrite num_subst in Hk1.
 
         enough (P1 x) by (eapply P_disjoint; eassumption).
         eapply φ1_sem' with (ρ := (fun _ => 0)). exists k'. eapply Qdec_absoluteness; eauto.
-      - rewrite sat_single_PA, !subst_comp, φ2_bounded_subst. cbn.
+      - rewrite sat_single_PA, !subst_comp, bounded_subst_2; last assumption. cbn.
         rewrite !num_subst. eapply Qdec_absoluteness; eauto.
     Qed.
   End value_disj.
@@ -595,7 +615,7 @@ Section completeness.
         eapply Qdec_absoluteness; eauto.
     Qed.
   End value.
-End completeness.
+End completeness. End completeness.
 
 Section Qtrichotomy.
   Existing Instance PA_funcs_signature.
@@ -604,48 +624,44 @@ Section Qtrichotomy.
   (* Cannot be concrete here due to bug in Proofmode *)
   Variable (p : peirce).
 
-  Lemma Qdec_le x : Qeq ⊢ ∀((num x ⧀ σ $0) ∨ ($0 ⧀ σ (num x))).
+  Lemma Qdec_le x : Qeq ⊢ ∀((num x ⧀= $0) ∨ ($0 ⧀= (num x))).
   Proof.
     induction x; fstart; fintro "y".
     - fleft. fexists y. 
       (*frewrite (ax_add_rec zero y).*)
-      feapply ax_trans; first last.
-      { feapply ax_sym. fapply ax_add_rec. }
-        fapply ax_succ_congr. fapply ax_sym. fapply ax_add_zero.
+      fapply ax_sym. fapply ax_add_zero.
     - (* fdestruct (ax_cases y). *)
       fassert (ax_cases); first ctx.
       fdestruct ("H" y) as "[H|[y' H]]".
       + fright. fexists (σ (num x)). 
         change (_ :: _) with Qeq.
-        feapply ax_trans; first last.
-        { feapply ax_sym. feapply ax_add_rec. }
-        fapply ax_succ_congr. 
         feapply ax_trans.
         { feapply ax_sym. fapply ax_add_zero.  }
         fapply ax_add_congr.
         * fapply ax_sym. ctx.
         * fapply ax_refl.
-      + fassert (<<(∀' y, (num x ⧀ (σ y)) ∨ (y ⧀ (σ num x))))%hoas. (* Why << and hoas? *)
+      + fassert (<<(∀' y, (num x ⧀= y) ∨ (y ⧀= num x)))%hoas. (* Why << and hoas? *)
         { fstop. eapply Weak.
           - cbn -[Qeq] in IHx. unfold "↑" in IHx. rewrite num_subst in IHx. eassumption.
           - now right. }
         fdestruct ("H0" y') as "[[z Hz]|[z Hz]]".
         * fleft. fexists z. 
+          feapply ax_trans; first ctx.
           feapply ax_trans; first last.
           { feapply ax_sym. feapply ax_add_rec. }
-          feapply ax_succ_congr. feapply ax_trans; ctx.
+          feapply ax_succ_congr. ctx.
         * fright. fexists z. 
-          feapply ax_trans; first last.
+          feapply ax_trans.
+          { feapply ax_succ_congr. ctx. }
+          feapply ax_trans.
           { feapply ax_sym. feapply ax_add_rec. }
-          feapply ax_succ_congr. feapply ax_trans.
-          { ctx. }
           feapply ax_add_congr.
           -- fapply ax_sym. ctx.
           -- fapply ax_refl.
   Qed.
 End Qtrichotomy.
 
-Module value_disjoint. Section value_disjoint.
+Section value_disjoint.
   Existing Instance PA_funcs_signature.
   Existing Instance PA_preds_signature.
 
@@ -674,8 +690,8 @@ Module value_disjoint. Section value_disjoint.
   Hypothesis (φ1_syn : forall x, P1 x <-> Qeq ⊢I ∃ φ1[(num x) ..])
              (φ2_syn : forall x, P2 x <-> Qeq ⊢I ∃ φ2[(num x) ..]).
 
-  Definition φ1' := φ1 ∧ ∀ $0 ⧀ σ $2 ~> φ2[$1 .: $0 ..] ~> ⊥.
-  Definition φ2' := φ2 ∧ ∀ $0 ⧀ σ $2 ~> φ1[$1 .: $0 ..] ~> ⊥.
+  Definition φ1' := φ1 ∧ ∀ $0 ⧀= $2 ~> φ2[$1 .: $0 ..] ~> ⊥.
+  Definition φ2' := φ2 ∧ ∀ $0 ⧀= $2 ~> φ1[$1 .: $0 ..] ~> ⊥.
 
   Lemma φ1'_bounded : bounded 2 φ1'.
   Proof.
@@ -694,12 +710,12 @@ Module value_disjoint. Section value_disjoint.
   Lemma φ1'_Δ0 : Δ0 φ1'.
   Proof.
     constructor; first assumption.
-    change (σ $2) with (σ $1)`[↑]. repeat constructor. now apply Δ0_subst.
+    change ($2) with ($1)`[↑]. repeat constructor. now apply Δ0_subst.
   Qed.
   Lemma φ2'_Δ0 : Δ0 φ2'.
   Proof.
     constructor; first assumption.
-    change (σ $2) with (σ $1)`[↑]. repeat constructor. now apply Δ0_subst.
+    change ($2) with ($1)`[↑]. repeat constructor. now apply Δ0_subst.
   Qed.
     
 
@@ -732,9 +748,9 @@ Module value_disjoint. Section value_disjoint.
     { eapply Ctx. eauto. }
     cbn -[Qeq].
     replace (List.map (subst_form ↑) Qeq) with Qeq by reflexivity.
-    rewrite subst_comp. rewrite (φ2_bounded_subst φ2_bounded). cbn -[Qeq]. rewrite num_subst.
+    rewrite subst_comp. rewrite (bounded_subst_2 _ φ2_bounded). cbn -[Qeq]. rewrite num_subst.
     eapply Weak.
-    2: { instantiate (1 :=((φ1[(num x)..] ∧ (∀ (∃ σ $2 == σ $1 ⊕ $0) ~> ¬ φ2[num x .: $0..]) :: Qeq))%list).
+    2: { instantiate (1 :=((φ1[(num x)..] ∧ (∀ (∃ $2 == $1 ⊕ $0) ~> ¬ φ2[num x .: $0..]) :: Qeq))%list).
          intros ϕ [H|H]; subst.
          - now left.
          - now do 2 right. }
@@ -751,7 +767,7 @@ Module value_disjoint. Section value_disjoint.
         + constructor. lia.
         + lia. }
     cbn -[Qeq] in Hk. rewrite !num_subst in Hk. unfold "↑" in Hk.
-    assert (Qeq ⊢I (num k ⧀ σ $0) ∨ ($0 ⧀ σ (num k))).
+    assert (Qeq ⊢I (num k ⧀= $0) ∨ ($0 ⧀= (num k))).
     { pose proof (AllE _ $0 _ (Qdec_le intu k)) as H.
       cbn -[Qeq] in *. rewrite !num_subst in *.
       assumption. }
@@ -763,7 +779,7 @@ Module value_disjoint. Section value_disjoint.
       eapply IE; first eapply IE.
       { apply Ctx. left. reflexivity. }
       + apply Ctx. right. left. reflexivity.
-      + rewrite subst_comp, (φ2_bounded_subst φ2_bounded).  cbn -[Qeq]. rewrite num_subst.
+      + rewrite subst_comp, (bounded_subst_2 _ φ2_bounded).  cbn -[Qeq]. rewrite num_subst.
         eapply Weak. { eapply CE1, Hk. }
         now do 3 right.
     - eapply IE.
@@ -778,7 +794,82 @@ Module value_disjoint. Section value_disjoint.
         * apply φ1_bounded.
         * intros [|[|n]] Hn; cbn; rewrite ?num_subst; reflexivity + lia.
   Qed.
-End value_disjoint. End value_disjoint.
+End value_disjoint.
+
+Section value.
+  Existing Instance PA_funcs_signature.
+  Existing Instance PA_preds_signature.
+
+  Existing Instance interp_nat.
+
+  Hypothesis Σcompleteness : forall φ rho, bounded 0 φ -> Σ1 φ -> interp_nat;rho ⊨ φ -> Qeq ⊢I φ.
+
+  Variable f : nat -> nat -> Prop.
+  Hypothesis f_func : forall x y1 y2, f x y1 -> f x y2 -> y1 = y2.
+
+  Variable T : form.
+  Hypothesis T_bounded : bounded 3 T.
+  Hypothesis T_Δ0 : Δ0 T.
+  Hypothesis T_sem : forall ρ x y,
+      f x y <-> interp_nat; ρ ⊨ ∃ T[num x .: (num y) ..].
+  Hypothesis T_syn : forall  x y,
+      f x y <-> Q ⊢I ∃ T[num x .: (num y) ..].
+
+  Definition T' := T ∧ ∀ $0 ⧀= $2 ~> ∀ $0 ⧀= $4 ~> ($1⊕$0 ⧀= $3⊕$4) ~> (¬ $1 == $3) ~> T[$2.:$1.:$0..] ~> ⊥.
+  Lemma T'_Δ0 : Δ0 T'.
+  Proof. 
+    repeat constructor; first assumption. change $2 with $1`[↑].
+    constructor. change $4 with $3`[↑].
+    repeat constructor. now apply Δ0_subst.
+  Qed.
+
+  Local Lemma iμ_nat k : iμ k = k.
+  Proof.
+    induction k; cbn; congruence.
+  Qed.
+  Lemma CTQ x y : f x y -> Qeq ⊢I ∀ (∃T'[num x .: $1 ..]) <~> num y == $0.
+  Proof.
+    intros H. apply AllI. change (map _ _) with Qeq.
+    apply CI.
+    - apply II. eapply ExE; first now ctx.
+      cbn -[Qeq]. unfold "↑". rewrite !num_subst. change (map _ _) with Qeq.
+    - apply II. admit.
+  Admitted.
+  Lemma VR1 x y : f x y -> Qeq ⊢I ∃ T'[num x .: (num y) ..].
+  Proof.
+    intros H. eapply Σcompleteness.
+    { admit. }
+    { admit. }
+
+    pose proof H as H'. erewrite T_sem with (ρ := fun _ => 0) in H'.
+    destruct H' as [k Hk]. exists k. split.
+    { apply Hk. }
+
+    cbn. repeat setoid_rewrite num_subst. setoid_rewrite eval_num.
+    repeat setoid_rewrite iμ_nat.
+
+    intros y' Hy' k' Hk' Hle Hneq.
+    do 3 rewrite sat_single_nat. rewrite !subst_comp. 
+    rewrite (bounded_subst_3 _ T_bounded). cbn.
+    rewrite !num_subst. 
+
+    contradict Hneq. eapply f_func; last eassumption.
+    eapply T_sem. exists k'. rewrite sat_single_nat.
+    rewrite subst_comp, (bounded_subst_3 _ T_bounded). cbn.
+    rewrite !num_subst. eassumption.
+  Admitted.
+  Lemma VR2 x y y' : f x y -> y <> y' -> Qeq ⊢I ¬ ∃ T'[num x .: (num y) ..].
+  Proof.
+    intros Hf Hy.
+    cbn -[Qeq]. 
+    apply II. eapply ExE.
+    { eapply Ctx. eauto. }
+    cbn -[Qeq].
+    replace (List.map (subst_form ↑) Qeq) with Qeq by reflexivity.
+    rewrite !num_subst. unfold "↑".
+
+  Admitted.
+End value.
 
 
 Section Qinsep.
