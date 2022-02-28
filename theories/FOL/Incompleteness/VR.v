@@ -238,11 +238,6 @@ Section sigma.
     intros H. eapply bounded_subst; first eassumption.
     intros [|[|k]]; easy + lia.
   Qed.
-  Lemma bounded_subst_3 φ ρ : bounded 3 φ -> φ[ρ] = φ[ρ 0 .: ρ 1 .: (ρ 2) ..].
-  Proof.
-    intros H. eapply bounded_subst; first eassumption.
-    intros [|[|[|k]]]; easy + lia.
-  Qed.
 End sigma.
 
 Section Qmodel.
@@ -827,21 +822,13 @@ Section value.
   Proof.
     induction k; cbn; congruence.
   Qed.
-  Lemma CTQ x y : f x y -> Qeq ⊢I ∀ (∃T'[num x .: $1 ..]) <~> num y == $0.
-  Proof.
-    intros H. apply AllI. change (map _ _) with Qeq.
-    apply CI.
-    - apply II. eapply ExE; first now ctx.
-      cbn -[Qeq]. unfold "↑". rewrite !num_subst. change (map _ _) with Qeq.
-    - apply II. admit.
-  Admitted.
   Lemma VR1 x y : f x y -> Qeq ⊢I ∃ T'[num x .: (num y) ..].
   Proof.
     intros H. eapply Σcompleteness.
     { admit. }
     { admit. }
 
-    pose proof H as H'. erewrite T_sem with (ρ := fun _ => 0) in H'.
+    pose proof H as H'. erewrite T_sem in H'.
     destruct H' as [k Hk]. exists k. split.
     { apply Hk. }
 
@@ -849,25 +836,7 @@ Section value.
     repeat setoid_rewrite iμ_nat.
 
     intros y' Hy' k' Hk' Hle Hneq.
-    do 3 rewrite sat_single_nat. rewrite !subst_comp. 
-    rewrite (bounded_subst_3 _ T_bounded). cbn.
-    rewrite !num_subst. 
-
-    contradict Hneq. eapply f_func; last eassumption.
-    eapply T_sem. exists k'. rewrite sat_single_nat.
-    rewrite subst_comp, (bounded_subst_3 _ T_bounded). cbn.
-    rewrite !num_subst. eassumption.
-  Admitted.
-  Lemma VR2 x y y' : f x y -> y <> y' -> Qeq ⊢I ¬ ∃ T'[num x .: (num y) ..].
-  Proof.
-    intros Hf Hy.
-    cbn -[Qeq]. 
-    apply II. eapply ExE.
-    { eapply Ctx. eauto. }
-    cbn -[Qeq].
-    replace (List.map (subst_form ↑) Qeq) with Qeq by reflexivity.
-    rewrite !num_subst. unfold "↑".
-
+    rewrite !sat_single_nat.
   Admitted.
 End value.
 

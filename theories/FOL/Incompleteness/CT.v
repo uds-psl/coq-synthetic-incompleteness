@@ -12,7 +12,6 @@ Notation "'Sigma' x .. y , p" :=
      format "'[' 'Sigma'  '/  ' x  ..  y ,  '/  ' p ']'")
   : type_scope.
 
-
 Definition part_functional {X} (f : nat -> option X) :=
   forall k1 k2 y1 y2, f k1 = Some y1 -> f k2 = Some y2 -> y1 = y2.
 Definition part_stationary {X} (f : nat -> option X) :=
@@ -222,6 +221,21 @@ Section CT.
     - enough (false = true) by discriminate.
       apply Hf, Hc. unfold freturns. rewrite H. eauto.
   Qed.
+  Definition special_guess_func (f : nat -> bool) := forall c y,
+      (freturns (theta c) c y -> f c = y).
+  Lemma special_guess_undec : ~exists f, special_guess_func f.
+  Proof.
+    intros [f Hf].
+    destruct (theta_univ (fun c _ => Some (negb (f c)))) as [c Hc].
+    { congruence. }
+    specialize (Hc c). specialize (Hf c).
+    destruct (f c) eqn:H.
+    - enough (true = false) by discriminate. apply Hf, Hc.
+      unfold freturns. rewrite H. eauto.
+    - enough (false = true) by discriminate. apply Hf, Hc.
+      unfold freturns. rewrite H. eauto.
+  Qed.
+
   Lemma guess_func_diverge (f : nat -> nat -> nat -> option bool) :
     (forall c x, freturns (theta c) x true -> freturns (f c) x true) ->
     (forall c x, freturns (theta c) x false -> freturns (f c) x false) ->
@@ -284,6 +298,7 @@ Section CT.
 
     Lemma guess_expl_incompleteness : exists s, ~provable s /\ ~provable (neg s).
     Proof.
+      Check guess_func_diverge.
       destruct provable_enumerable as [prov Hprov].
       pose proof sentences_discrete as sentences_discrete.
       apply discrete_iff in sentences_discrete as [sentences_eqdec].
@@ -297,7 +312,6 @@ Section CT.
         destruct (sentences_eqdec p (neg(projT1 (Hrepr c) x true))).
         - exact (Some false).
         - exact None. }
-
       unshelve evar (g : nat -> nat -> option bool).
       {
         intros c k. destruct (f c c k) as [b|].
@@ -334,7 +348,6 @@ Section CT.
         + now destruct sentences_eqdec.
     Qed.
   End guess_expl.
-
   Section guess_insep.
     Variable fs : FS.
     Hypothesis provable_decidable : decidable provable.
@@ -360,6 +373,33 @@ Section CT.
     Lemma guess_insep_incompleteness : False.
     Proof.
       apply guess_undec, guess_insep_dec.
+    Qed.
+  End guess_insep.
+  Section guess_insep.
+    Variable fs : FS.
+    Hypothesis provable_decidable : decidable provable.
+
+
+    Hypothesis Hrepr : exists r : nat -> sentences,
+      (forall c, freturns (theta c) c true -> provable (r c)) /\
+        (forall c, freturns (theta c) c false -> provable (neg (r c))).
+
+    Local Lemma special_guess_insep_dec : exists f, special_guess_func f.
+    Proof.
+      apply decidable_iff in provable_decidable as [prov_dec].
+      destruct Hrepr as (r & Hr1 & Hr2).
+      exists (fun c => if prov_dec (r c) then true else false).
+      intros c [] Hret; destruct prov_dec as [H|H].
+      - easy.
+      - destruct H. now apply Hr1.
+      - edestruct consistent.
+        + apply H.
+        + apply Hr2, Hret.
+      - reflexivity.
+    Qed.
+    Lemma special_guess_insep_incompleteness : False.
+    Proof.
+      apply special_guess_undec, special_guess_insep_dec.
     Qed.
   End guess_insep.
 
@@ -537,11 +577,8 @@ Section CTrepr.
      going to be difficult *)
   (* Idea: we need to encode a hard (TM) problem into the inputs there valueRepr is free to do anything and choose provability such that semi-deciding provability already leads to a contradiction *)
   (* We _will_ have to do something related to computability because otherwise weak representability could just decide by itself whether p holds and return apropriatly *)
-
 End CTrepr.
 
-Check guess_expl_incompleteness.
-Check guess_insep_incompleteness.
 
 From Undecidability.FOL.Util Require Import Syntax_facts FullDeduction FullDeduction_facts FullTarski FullTarski_facts Axiomatisations FA_facts Syntax.
 From Undecidability.FOL Require Import PA.
@@ -597,35 +634,6 @@ Proof.
     + assumption.
     + apply nat_is_Q_model.
 Defined.
-
-
-Section Qexpl.
-  Existing Instance Qfs_intu.
-
-  Variable theta : nat -> nat -> nat -> option bool.
-
-  Hypothesis theta_stationary : forall c, fstationary (theta c).
-  Hypothesis theta_univ : forall (f : nat -> nat -> option bool), fstationary f ->
-            exists c, forall x y, freturns f x y <-> freturns (theta c) x y.
-  Arguments theta_univ : clear implicits.
-
-  Hypothesis Hrepr : forall c, Sigma (repr : nat -> bool -> sentences),
-      forall x y, freturns (theta c) x y -> provable (repr x y) /\ provable (neg (repr x (negb y))).
-  Lemma Qexpl : exists s, ~provable s /\ ~provable (neg s).
-  Proof.
-    eapply guess_expl_incompleteness; eassumption.
-  Qed.
-End Qexpl.
-
-
-Goal True.
-Proof.
-  pose proof Qexpl.
-  unfold sentences, neg, provable in H.
-  unfold Qfs_intu, fs_fo in H.
-  unfold form_provable, form_neg in H. cbn in H.
-  Check H.
-Abort.
 
 Section Q_CT_val_total.
   Existing Instance Qfs_intu.
