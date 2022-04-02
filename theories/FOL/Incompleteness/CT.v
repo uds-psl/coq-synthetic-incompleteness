@@ -103,8 +103,9 @@ Qed.
 Section CT.
   Variable theta : nat -> nat -> nat -> option bool.
 
-  Hypothesis theta_stationary : forall c, fstationary (theta c).
-  Hypothesis theta_univ : forall (f : nat -> nat -> option bool), fstationary f ->
+  (* "fancy" version formulated with fstationary instead of ffunctional *)
+  Hypothesis theta_functional : forall c, ffunctional (theta c).
+  Hypothesis theta_univ : forall (f : nat -> nat -> option bool), ffunctional f ->
             exists c, forall x y, freturns f x y <-> freturns (theta c) x y.
   Arguments theta_univ : clear implicits.
 
@@ -149,6 +150,7 @@ Section CT.
     Variable fs : FS.
 
     (* Kleene indirectly mentions we can strengthen this assumption and instead drop consistency? *)
+    (* TODO rephrase using self-halting *)
     Hypothesis Hrepr : forall c, Sigma (repr : nat -> sentences),
       forall x, fhalts (theta c) x <-> provable (repr x).
     
@@ -165,14 +167,12 @@ Section CT.
         destruct (sentences_eqdec p (neg (projT1 (Hrepr c) c))).
         - exact (Some true).
         - exact None. }
-      destruct (@stationize _ f) as (f' & Hfstat & Hfcorr).
-      {
-        intros x k1 k2 y1 y2 H1 H2.
-        unfold f in H1, H2.
-        destruct (prov k1) as [s1|], (prov k2) as [s2|]; try discriminate. 
-        destruct (sentences_eqdec s1 _), (sentences_eqdec s2 _); congruence. }
       
-      destruct (theta_univ f' Hfstat) as [c Hc].
+      destruct (theta_univ f ) as [c Hc].
+      { intros x k1 k2 y1 y2. unfold f. intros Hf1 Hf2.
+        destruct (prov k1), (prov k2); try congruence.
+        destruct sentences_eqdec, sentences_eqdec; congruence. }
+
       destruct (Hrepr c) as (r & Hr) eqn:Hreq. 
 
       (* sentence is equivalent to its own refutability *)
@@ -181,19 +181,18 @@ Section CT.
       { split.
         - intros H.
           destruct H as (b & Hb).
-          rewrite <-Hc, <-Hfcorr in Hb.
+          rewrite <-Hc in Hb.
           destruct Hb as [k Hk].
           apply Hprov. exists k.
           unfold f in Hk. destruct prov; last discriminate.
           rewrite Hreq in Hk. cbn in Hk.
           destruct sentences_eqdec; congruence.  
         - intros [k Hk]%Hprov.
-          exists true. rewrite <-Hc, <-Hfcorr.
+          exists true. rewrite <-Hc.
           exists k. unfold f.
           destruct prov; last discriminate.
           rewrite Hreq. cbn.
           destruct sentences_eqdec; congruence. }
-
       exists (r c).
       split.
       - intros Hp. apply (consistent (r c)).
@@ -221,8 +220,38 @@ Section CT.
     - enough (false = true) by discriminate.
       apply Hf, Hc. unfold freturns. rewrite H. eauto.
   Qed.
+  Lemma guess_func_diverge (f : nat -> nat -> nat -> option bool) :
+    (forall c x, freturns (theta c) x true -> freturns (f c) x true) ->
+    (forall c x, freturns (theta c) x false -> freturns (f c) x false) ->
+    (forall c, ffunctional (f c)) ->
+    exists c x, fdiverges (f c) x.
+  Proof.
+    intros Hf1 Hf2 Hfunc.
+    destruct (theta_univ (fun c k => match f c c k with
+                                  | Some b => Some (negb b)
+                                  | None => None
+                                  end)) as [c Hc].
+    { intros x k k' y y'. 
+      destruct (f x x k) as [b|] eqn:H1, (f x x k') as [b'|] eqn:H2; try congruence.
+      enough (b = b') by congruence.
+      eapply Hfunc; eassumption. }
+
+    exists c, c.
+    intros k. enough (forall b, f c c k <> Some b) by (destruct (f c c k); congruence).
+    intros b H.
+    enough (freturns (f c) c true /\ freturns (f c) c false) as [[k1 Hk1] [k2 Hk2]].
+    {  enough (true = false) by discriminate.
+      eapply Hfunc; eassumption. }
+    destruct b; split.
+    - now exists k.
+    - apply Hf2, Hc. exists k. now rewrite H.
+    - apply Hf1, Hc. exists k. now rewrite H.
+    - now exists k.
+  Qed.
   Definition special_guess_func (f : nat -> bool) := forall c y,
-      (freturns (theta c) c y -> f c = y).
+      (freturns (theta c) c y -> f c = y). 
+  Definition partial_special_guess_func (f : nat -> nat -> option bool) := forall c y,
+      (freturns (theta c) c y -> freturns f c y). 
   Lemma special_guess_undec : ~exists f, special_guess_func f.
   Proof.
     intros [f Hf].
@@ -235,33 +264,26 @@ Section CT.
     - enough (false = true) by discriminate. apply Hf, Hc.
       unfold freturns. rewrite H. eauto.
   Qed.
-
-  Lemma guess_func_diverge (f : nat -> nat -> nat -> option bool) :
-    (forall c x, freturns (theta c) x true -> freturns (f c) x true) ->
-    (forall c x, freturns (theta c) x false -> freturns (f c) x false) ->
-    (forall c, fstationary (f c)) ->
-    exists c x, fdiverges (f c) x.
+  Lemma partial_special_guess_func_diverge f :
+    ffunctional f -> partial_special_guess_func f ->
+    exists c, fdiverges f c.
   Proof.
-    intros Hf1 Hf2 Hstat.
-    destruct (theta_univ (fun c k => match f c c k with
+    intros Hfunc Hgf.
+    destruct (theta_univ (fun c k => match f c k with
                                   | Some b => Some (negb b)
                                   | None => None
                                   end)) as [c Hc].
-    { intros c k k' y. destruct (f c c k) as [[]|] eqn:H1, (f c c k') as [[]|] eqn:H2.
-      all: cbn; intros [= <-] Hk.
-      all: specialize (Hstat _ _ _ _ _ H1 Hk); congruence. }
-    exists c, c.
-    intros k. enough (forall b, f c c k <> Some b) by (destruct (f c c k); congruence).
-    intros b H.
-    enough (freturns (f c) c true /\ freturns (f c) c false) as [[k1 Hk1] [k2 Hk2]].
-    { assert (k1 >= k2 \/ k2 >= k1) as [Hk | Hk] by lia.
-      - specialize (Hstat _ _ _ _ _ Hk2 Hk). congruence.
-      - specialize (Hstat _ _ _ _ _ Hk1 Hk). congruence. }
-    destruct b; split.
-    - now exists k.
-    - apply Hf2, Hc. exists k. now rewrite H.
-    - apply Hf1, Hc. exists k. now rewrite H.
-    - now exists k.
+    { intros x k1 k2 [] [] H1 H2.
+      all: destruct (f x k1) as [[]|] eqn:Hf1, (f x k2) as [[]|] eqn:Hf2.
+      all: cbn; try congruence.
+      all: eapply Hfunc; eassumption. }
+    exists c. intros k. destruct (f c k) as [[]|] eqn:H; last reflexivity.
+    - enough (freturns f c false)as [k' Hk'].
+      { now specialize (Hfunc _ _ _ _ _ H Hk'). }
+      apply Hgf. rewrite <-Hc. exists k. now rewrite H.
+    - enough (freturns f c true)as [k' Hk'].
+      { now specialize (Hfunc _ _ _ _ _ H Hk'). }
+      apply Hgf. rewrite <-Hc. exists k. now rewrite H.
   Qed.
 
   Section guess.
@@ -298,7 +320,6 @@ Section CT.
 
     Lemma guess_expl_incompleteness : exists s, ~provable s /\ ~provable (neg s).
     Proof.
-      Check guess_func_diverge.
       destruct provable_enumerable as [prov Hprov].
       pose proof sentences_discrete as sentences_discrete.
       apply discrete_iff in sentences_discrete as [sentences_eqdec].
@@ -318,63 +339,35 @@ Section CT.
         - exact (Some (negb b)).
         - exact None.
       }
-      destruct (@stationize _ g) as (g' & Hgstat & Hgcorr).
-      {
-        intros x k1 k2 y1 y2.
-        unfold g, f.
-        destruct (prov k1) eqn:Hk1, (prov k2) eqn:Hk2; try congruence.
-        repeat destruct sentences_eqdec; try congruence; subst.
-        all: destruct (consistent (projT1 (Hrepr x) x true)); apply Hprov; eauto.
-      }
-
-      destruct (theta_univ g' Hgstat) as [c Hc].
+      destruct (theta_univ g) as [c Hc].
+      { intros x k k' y y'. unfold g, f.
+        destruct (prov k) as [s1|] eqn:H1, (prov k') as [s2|] eqn:H2; try congruence.
+        repeat destruct sentences_eqdec; subst; try congruence; edestruct consistent.
+        all: apply Hprov.
+        - exists k. eassumption.
+        - eauto.
+        - exists k'. eassumption.
+        - eauto. }
       exists (projT1 (Hrepr c) c true).
       split.
       - intros Hp.
         destruct (Hrepr c) as [r Hr] eqn:Heq; cbn in *.
         eapply consistent; first exact Hp.
         apply Hprov in Hp as [k Hk].
-        apply Hr with (y := false), Hc, Hgcorr.
+        apply Hr with (y := false), Hc.
         exists k. unfold g, f. rewrite Hk, Heq. cbn.
         destruct sentences_eqdec; cbn; congruence.
       - intros Hp. 
         destruct (Hrepr c) as [r Hr] eqn:Heq; cbn in *.
         apply (consistent (r c true)); last assumption.
         apply Hprov in Hp as [k Hk].
-        apply Hr, Hc, Hgcorr.
+        apply Hr, Hc.
         exists k. unfold g, f. rewrite Hk, Heq.
         destruct sentences_eqdec.
         + destruct (@neg_no_fixpoint2 _ (r c true)); firstorder.
         + now destruct sentences_eqdec.
     Qed.
   End guess_expl.
-  Section guess_insep.
-    Variable fs : FS.
-    Hypothesis provable_decidable : decidable provable.
-
-
-    Hypothesis Hrepr : exists r : nat -> nat -> sentences,
-      (forall c x, freturns (theta c) x true -> provable (r c x)) /\
-        (forall c x, freturns (theta c) x false -> provable (neg (r c x))).
-
-    Local Lemma guess_insep_dec : exists f, guess_func f.
-    Proof.
-      apply decidable_iff in provable_decidable as [prov_dec].
-      destruct Hrepr as (r & Hr1 & Hr2).
-      exists (fun c x => if prov_dec (r c x) then true else false).
-      intros c x [] Hret; destruct prov_dec as [H|H].
-      - easy.
-      - destruct H. now apply Hr1.
-      - edestruct consistent.
-        + apply H.
-        + apply Hr2, Hret.
-      - reflexivity.
-    Qed.
-    Lemma guess_insep_incompleteness : False.
-    Proof.
-      apply guess_undec, guess_insep_dec.
-    Qed.
-  End guess_insep.
   Section guess_insep.
     Variable fs : FS.
     Hypothesis provable_decidable : decidable provable.
@@ -402,15 +395,14 @@ Section CT.
       apply special_guess_undec, special_guess_insep_dec.
     Qed.
   End guess_insep.
-
   Section guess_insep_expl.
     Variable fs : FS.
 
-    Hypothesis Hrepr : exists r : nat -> nat -> sentences,
-      (forall c x, freturns (theta c) x true -> provable (r c x)) /\
-        (forall c x, freturns (theta c) x false -> provable (neg (r c x))).
 
-    (* TODO deduplicate proof with the one over CG *)
+    Hypothesis Hrepr : exists r : nat -> sentences,
+      (forall c, freturns (theta c) c true -> provable (r c)) /\
+        (forall c, freturns (theta c) c false -> provable (neg (r c))).
+
     Lemma guess_insep_expl_incompleteness : exists s, ~provable s /\ ~provable (neg s).
     Proof.
       destruct Hrepr as (r & Hr1 & Hr2).
@@ -418,50 +410,43 @@ Section CT.
       pose proof sentences_discrete as sentences_discrete.
       apply discrete_iff in sentences_discrete as [sentences_eqdec].
 
-      unshelve evar (f : nat -> nat -> nat -> option bool).
-      { intros c x k.
+      unshelve evar (f : nat -> nat -> option bool).
+      { intros c k.
         destruct (prov k) as [p|]. 2: exact None.
 
-        destruct (sentences_eqdec p (r c x)).
+        destruct (sentences_eqdec p (r c)).
         1: exact (Some true).
-        destruct (sentences_eqdec p (neg (r c x))).
+        destruct (sentences_eqdec p (neg (r c))).
         - exact (Some false).
         - exact None. }
 
-      unshelve evar (g : nat -> nat -> option bool).
-      {
-        intros c k. destruct (f c c k) as [b|].
-        - exact (Some (negb b)).
-        - exact None.
-      }
-      destruct (@stationize _ g) as (g' & Hgstat & Hgcorr).
-      {
-        intros x k1 k2 y1 y2.
-        unfold g, f.
-        destruct (prov k1) eqn:Hk1, (prov k2) eqn:Hk2; try congruence.
-        repeat destruct sentences_eqdec; try congruence; subst.
-        all: destruct (consistent (r x x)); apply Hprov; eauto.
-      }
-
-      destruct (theta_univ g' Hgstat) as [c Hc].
-      exists (r c c).
-      split.
-      - intros Hp.
-        eapply consistent; first exact Hp.
-        apply Hr2, Hc, Hgcorr.
-        apply Hprov in Hp as [k Hk].
-        exists k. unfold g, f. rewrite Hk.
-        destruct sentences_eqdec; cbn; congruence.
-      - intros Hp.
-        apply (consistent (r c c)); last assumption.
-        apply Hr1, Hc, Hgcorr.
-        apply Hprov in Hp as [k Hk].
-        exists k. unfold g, f. rewrite Hk.
-        destruct sentences_eqdec.
-        + destruct (@neg_no_fixpoint2 _ (r c c)); firstorder.
-        + now destruct sentences_eqdec.
+      destruct (@partial_special_guess_func_diverge f) as [c Hc].
+      { intros x k1 k2 y1 y2. unfold f. intros Hf1 Hf2.
+        destruct (prov k1) as [s1|] eqn:H1, (prov k2) as [s2|] eqn:H2; try congruence.
+        repeat destruct sentences_eqdec; subst; try congruence.
+        all: destruct (consistent (r x)); apply Hprov; eauto. }
+      { intros x [] Hret.
+        - assert (provable (r x)) as [k Hk]%Hprov by auto.
+          exists k. unfold f. rewrite Hk. now destruct sentences_eqdec. 
+        - assert (provable (neg (r x))) as [k Hk]%Hprov by auto.
+          exists k. unfold f. rewrite Hk. 
+          repeat destruct sentences_eqdec; try congruence.
+          edestruct neg_no_fixpoint2; last eauto. 
+          apply Hprov. eauto. }
+      exists (r c). split.
+      - intros [k Hk]%Hprov.
+        enough (freturns f c true) as [k' Hk'] by congruence.
+        exists k. unfold f. rewrite Hk.
+        destruct sentences_eqdec; congruence.
+      - intros [k Hk]%Hprov.
+        enough (freturns f c false) as [k' Hk'] by congruence.
+        exists k. unfold f. rewrite Hk.
+        repeat destruct sentences_eqdec; try congruence.
+        edestruct neg_no_fixpoint2; last eauto.
+        apply Hprov. eauto.
     Qed.
   End guess_insep_expl.
+
 
 
   Section CTsecond.
@@ -514,20 +499,18 @@ Section CT.
       { intros k1 k2 y1 y2 H1 H2. unfold f in H1, H2.
         destruct (unembed k1), (unembed k2).
         do 4 destruct prov; try do 2 destruct sentences_discrete; congruence. }
-      destruct (@theta_univ (fun _ => mkstat f)) as [c Hc].
-      { intros _. apply mkstat_stationary. exact Hfunc. }
+      destruct (@theta_univ (fun _ => f)) as [c Hc].
+      { intros _. apply Hfunc. }
       exists c. split.
       - intros Hhalts s [k1 Hk1]%Hprov [k2 Hk2]%Hprov. apply Hhalts.
         exists true. 
-        rewrite <-Hc. change (part_returns (mkstat f) true).
-        rewrite <-mkstat_correct; last assumption.
+        rewrite <-Hc.
         exists (embed (k2, k1)). 
         unfold f. rewrite embedP.
         rewrite Hk1, Hk2.
         now destruct sentences_discrete.
       - intros H (b & Hb).
-        rewrite <-Hc in Hb. change (part_returns (mkstat f) b) in Hb.
-        rewrite <- mkstat_correct in Hb; last assumption.
+        rewrite <-Hc in Hb. 
         destruct Hb as [k Hk].
         unfold f in Hk. destruct (unembed k) as [x y].
         destruct (prov x) as [s1|] eqn:H1, (prov y) as [s2|] eqn:H2; try discriminate.
