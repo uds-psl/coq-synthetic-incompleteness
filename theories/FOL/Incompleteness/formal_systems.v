@@ -23,14 +23,17 @@ Arguments consistent {S neg} _ _ _ _.
 Notation "fs ⊢F s" := (fs.(P) s) (at level 30).
 Notation "fs ⊬F s" := (~fs.(P) s) (at level 30).
 
-Definition complete {S : Type} {neg : S -> S} (fs : FS S neg) :=
-  forall s, fs ⊢F s \/ fs ⊢F neg s.
+(*Definition complete {S : Type} {neg : S -> S} (fs : FS S neg) :=
+   forall s, fs ⊢F s \/ fs ⊢F neg s.*)
 
 Definition extension {S : Type} {neg : S -> S} (fs1 fs2 : FS S neg) :=
   forall s, fs1 ⊢F s -> fs2 ⊢F s.
 
 Section facts.
   Context {S : Type} {neg : S -> S} (fs : FS S neg).
+
+  Definition complete := forall s, fs ⊢F s \/ fs ⊢F neg s.
+  Definition independent s := fs ⊬F s /\ fs ⊬F neg s.
 
   Lemma neg_no_fixpoint_provable : forall s, fs ⊢F s -> s <> neg s.
   Proof.
@@ -40,14 +43,14 @@ Section facts.
   Proof.
     intros s Hs Heq. apply (consistent fs s); congruence.
   Qed.
-  Lemma neg_no_fixpoint_comp : complete fs -> forall s, s <> neg s.
+  Lemma neg_no_fixpoint_comp : complete -> forall s, s <> neg s.
   Proof.
     intros complete s. destruct (complete s).
     - now apply neg_no_fixpoint_provable.
     - now apply neg_no_fixpoint_refutable.
   Qed.
 
-  Lemma undeepen_provability s : complete fs -> fs ⊬F s -> fs ⊢F neg s.
+  Lemma undeepen_provability s : complete -> fs ⊬F s -> fs ⊢F neg s.
   Proof.
     firstorder.
   Qed.
@@ -56,17 +59,17 @@ Section facts.
     eauto using consistent.
   Qed.
 
-  Lemma deep_provability_iff s : complete fs -> (fs ⊢F neg s <-> fs ⊬F s).
+  Lemma deep_provability_iff s : complete -> (fs ⊢F neg s <-> fs ⊬F s).
   Proof.
     firstorder using undeepen_provability, deepen_provability.
   Qed.
 
-  Lemma provable_ldecidable : complete fs -> ldecidable fs.(P).
+  Lemma provable_ldecidable : complete -> ldecidable fs.(P).
   Proof.
     intros complete s. destruct (complete s); firstorder using deep_provability_iff.
   Qed.
 
-  Lemma provable_coenumerable : complete fs -> enumerable (fun s => fs ⊬F s).
+  Lemma provable_coenumerable : complete -> enumerable (fun s => fs ⊬F s).
   Proof.
     intros complete.
     apply enumerable_equiv with (P := (fun s => fs ⊢F neg s)).
@@ -93,7 +96,7 @@ Section facts.
       destruct S_eqdec; congruence.
   Qed.
 
-  Lemma provable_decidable : complete fs -> decidable fs.(P).
+  Lemma provable_decidable : complete -> decidable fs.(P).
   Proof.
     intros complete. apply weakPost.
     - exact fs.(S_discrete).
@@ -144,7 +147,7 @@ Section facts.
       apply Hprov. exists k. now subst.
   Qed.
 
-  Lemma provable_decidable' : complete fs -> decidable fs.(P).
+  Lemma provable_decidable' : complete -> decidable fs.(P).
   Proof.
     intros complete.
     destruct is_provable as [f Hf].
