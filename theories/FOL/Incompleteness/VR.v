@@ -656,11 +656,12 @@ Section Qinsep.
     - apply theta_univ.
     - destruct (Qrepr (P_enum true)) as (φ1 & Hb1 & Hc1).
       destruct (Qrepr (P_enum false)) as (φ2 & Hb2 & Hc2).
-      Check φ1'.
       unshelve eexists.
-      { intros c. exists (∃ (φ1' φ1 φ2))[(num c)..]. apply bounded_closed.
-        admit. } admit.
-    - destruct s as [φ Hc]. exists φ.
+      { intros c. exact (∃ (φ1' φ1 φ2))[(num c)..]. }
+      split.
+      + cbn. admit.
+      + admit.
+    - exists s.
       split.
       + contradict Hs1. now exists Qeq.
       + contradict Hs2. now exists Qeq.

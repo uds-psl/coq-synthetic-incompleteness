@@ -8,9 +8,15 @@ Require Import ConstructiveEpsilon.
 Local Set Implicit Arguments.
 Local Unset Strict Implicit.
 
+
 Lemma decidable_equiv X p q : (forall (x : X), p x <-> q x) -> decidable p -> decidable q.
 Proof.
   firstorder.
+Qed.
+Lemma enumerable_equiv X (P Q : X -> Prop) :
+  (forall x, P x <-> Q x) -> enumerable P -> enumerable Q.
+Proof.
+  intros H [f Hf]. exists f. intros x. rewrite <- H. apply Hf.
 Qed.
 
 Definition ldecidable X (p : X -> Prop) := forall x, p x \/ ~p x.
@@ -133,11 +139,6 @@ Section facts.
     intros complete s. destruct (complete s); firstorder using consistent.
   Qed.
 
-  Lemma enumerable_equiv X (P Q : X -> Prop) :
-    (forall x, P x <-> Q x) -> enumerable P -> enumerable Q.
-  Proof.
-    intros H [f Hf]. exists f. intros x. rewrite <- H. apply Hf.
-  Qed.
   Lemma provable_coenumerable : completeness -> enumerable (fun s => ~provable s).
   Proof.
     intros complete.
@@ -189,6 +190,8 @@ Section instantiation.
   Context {peirce : peirce}.
 
   Hypothesis consistent : ~ T ⊢T ⊥.
+
+
 
 
   (* Mostly stolen from Dominik *)
@@ -286,14 +289,16 @@ Section instantiation.
   Definition fs_fo : FS.
   Proof.
     unshelve econstructor.
-    - exact { phi | closed phi }.
-    - exact form_neg. 
-    - exact form_provable.
-    - exact closed_discrete.
-    - unshelve eapply closed_enum, form_enumerable; assumption.
-    - exact form_provable_enumerable.
-    - intros [s ?] H1 H2.
-      apply (@consistency s); assumption.
+    - exact form.
+    - intros φ. exact (φ ~> ⊥).
+    - intros φ. exact (T ⊢T φ).
+    - now refine (@form_discrete _ _ _ _).
+    - now unshelve eapply form_enumerable.
+    - now unshelve eapply tprv_enumerable.
+    - cbn. intros φ (T1 & Hsub1 & Hφ1) (T2 & Hsub2 & Hφ2). apply consistent.
+      exists (T1 ++ T2)%list. split.
+      + intros psi [H|H]%List.in_app_or; eauto.
+      + eapply IE; eapply Weak; eauto.
   Defined.
 End instantiation.
 
