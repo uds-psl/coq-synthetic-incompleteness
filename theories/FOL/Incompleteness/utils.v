@@ -44,6 +44,7 @@ Record part (Y : Type) : Type := mkPart {
   valid : core_valid core 
 }.
 Arguments mkPart {_} _ _.
+Arguments valid [_] _.
 Definition part_eval {Y : Type} (p : part Y) (y : Y) :=
   exists k, (core p) k = Some y.
 Notation "p ▷ y" := (part_eval p y) (at level 30).
@@ -66,6 +67,12 @@ Proof.
     + now exists false, k.
     + exists false. now destruct Hk.
   - intros x. exact _.
+Qed.
+
+Lemma part_functional {X : Type} (p : part X) (x y : X) : p ▷ x -> p ▷ y -> x = y.
+Proof.
+  intros [k1 H1] [k2 H2].
+  eapply (p.(valid)); eassumption.
 Qed.
 
 Notation "A -\ B" := (A -> part B) (at level 30).

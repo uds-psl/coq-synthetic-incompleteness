@@ -13,7 +13,6 @@ Local Unset Strict Implicit.
 Record FS (S : Type) (neg : S -> S) : Type := 
   mkFS { P : S -> Prop
        ; S_discrete : discrete S
-       ; S_enumerable : enumerable__T S
        ; P_enumerable : enumerable P
        ; consistent : forall s, P s -> P (neg s) -> False }.
 Arguments FS : clear implicits.
@@ -64,47 +63,6 @@ Section facts.
     firstorder using undeepen_provability, deepen_provability.
   Qed.
 
-  Lemma provable_ldecidable : complete -> ldecidable fs.(P).
-  Proof.
-    intros complete s. destruct (complete s); firstorder using deep_provability_iff.
-  Qed.
-
-  Lemma provable_coenumerable : complete -> enumerable (fun s => fs ⊬F s).
-  Proof.
-    intros complete.
-    apply enumerable_equiv with (P := (fun s => fs ⊢F neg s)).
-    1: auto using deep_provability_iff.
-    apply semi_decidable_enumerable. 1: exact fs.(S_enumerable).
-
-    destruct fs.(P_enumerable) as [prov Hprov].
-    pose proof fs.(S_discrete) as [S_eqdec]%discrete_iff.
-    unshelve eexists.
-    {
-      intros s k.
-      destruct (prov k) as [p|]. 2: exact false.
-      destruct (S_eqdec (neg s) p).
-      - exact true.
-      - exact false.
-    }
-    intros s. split.
-    - intros [k Hk]%Hprov.
-      exists k. rewrite Hk. cbn.
-      now destruct S_eqdec.
-    - intros [k Hk]. cbn in Hk.
-      apply Hprov. exists k.
-      destruct (prov k) eqn:Heq. 2: congruence.
-      destruct S_eqdec; congruence.
-  Qed.
-
-  Lemma provable_decidable : complete -> decidable fs.(P).
-  Proof.
-    intros complete. apply weakPost.
-    - exact fs.(S_discrete).
-    - apply provable_ldecidable, complete.
-    - exact fs.(P_enumerable).
-    - apply provable_coenumerable, complete.
-  Qed.
-
   Lemma is_provable : exists f : S -\ bool, 
     (forall s, fs ⊢F s <-> f s ▷ true) /\
     (forall s, fs ⊢F neg s <-> f s ▷ false).
@@ -147,13 +105,13 @@ Section facts.
       apply Hprov. exists k. now subst.
   Qed.
 
-  Lemma provable_decidable' : complete -> decidable fs.(P).
+  Lemma provable_decidable : complete -> decidable fs.(P).
   Proof.
     intros complete.
     destruct is_provable as [f Hf].
     apply decidable_iff. constructor. intros s.
     destruct (@total_part_decidable (f s)) as [[] H].
-    - destruct (provable_ldecidable complete s) as [Hs|Hs].
+    - destruct (complete s) as [Hs|Hs].
       + exists true. firstorder.
       + exists false. firstorder.
     - firstorder.

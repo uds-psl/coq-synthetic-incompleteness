@@ -60,4 +60,24 @@ Section abstract.
     Qed.
   End halt.
 
+  Section insep.
+    Context {S : Type} {neg : S -> S} (fs : FS S neg).
+    Hypothesis prov_dec : decidable fs.(P).
+
+    Hypothesis Hrepr : exists (r : nat -> S), forall c,
+      (theta c c ▷ true -> fs ⊢F r c) /\
+      (theta c c ▷ false -> fs ⊢F neg (r c)).
+
+    Lemma insep_undecidability : False.
+    Proof.
+      destruct Hrepr as [r Hr].
+      destruct prov_dec as [f Hf].
+      unshelve eapply (@no_recursively_separating theta theta_universal).
+      { exact (fun c => f (r c)). } cbn. 
+      intros [] c H.
+      - apply Hf, Hr, H.
+      - enough (f (r c) <> true) by now destruct f.
+        unfold decider, reflects in Hf.
+        rewrite <-Hf. apply deepen_provability, Hr, H.
+    Qed.
 End abstract.

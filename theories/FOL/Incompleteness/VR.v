@@ -4,7 +4,6 @@ From Undecidability.Shared Require Import Dec embed_nat.
 
 From Undecidability.FOL.Util Require Import Syntax_facts FullDeduction FullDeduction_facts FullTarski FullTarski_facts Axiomatisations FA_facts Syntax.
 From Undecidability.FOL Require Import PA.
-
 (* Notation for satisfying list theories *)
 Notation "I ⊨=L T" := (forall psi, List.In psi T -> I ⊨= psi) (at level 20).
 (* Notation for explicitely giving model *)
