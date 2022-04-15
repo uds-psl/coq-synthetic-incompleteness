@@ -824,18 +824,19 @@ Module completeness. Section completeness.
   Hypothesis completeness : forall φ,
       Qeq ⊢C φ <-> forall (M : Type) (I : interp M) ρ, extensional I -> I ⊨=L Qeq -> ρ ⊨ φ.
 
-  Lemma Qdec_absoluteness M (I : interp M) (QM : I ⊨=L Qeq) (Mext : extensional I) ρN ρM φ :
+  Lemma Qdec_absoluteness M1 M2 (I1 : interp M1) (I2 : interp M2) (QM1 : I1 ⊨=L Qeq) (Mext1 : extensional I1) (QM2 : I2 ⊨=L Qeq) (Mext2 : extensional I2) ρ1 ρ2 φ :
+    Qdec φ -> I1; ρ1 ⊨ φ -> I2; ρ2 ⊨ φ.
+  Proof.
+    intros [Hφ|Hφ] HI1; rewrite completeness in Hφ.
+    - now apply Hφ.
+    - contradict HI1. now apply Hφ.
+  Qed.
+  Lemma Qdec_absoluteness_nat M (I : interp M) (QM : I ⊨=L Qeq) (Mext : extensional I) ρN ρM φ :
     Qdec φ -> interp_nat; ρN ⊨ φ <-> I; ρM ⊨ φ.
   Proof.
-    intros [Hφ|Hφ]; rewrite completeness in Hφ; try assumption; split.
-    - intros _. now apply Hφ.
-    - intros _. apply Hφ.
-      + easy.
-      + auto using nat_is_Q_model.
-    - intros []%Hφ.
-      + easy.
-      + auto using nat_is_Q_model.
-    - now intros []%Hφ.
+    intros Qdec. split; intros H.
+    - eapply (@Qdec_absoluteness nat M); now eauto using nat_is_Q_model.
+    - eapply (@Qdec_absoluteness M nat); now eauto using nat_is_Q_model.
   Qed.
 
   Section value_disj.
@@ -897,7 +898,7 @@ Module completeness. Section completeness.
       assert (exists k, (fun _ => 0) ⊨ φ1[num x .: (num k) ..]) as [k Hk] by now apply φ1_sem'.
       exists (iμ k). split.
       - rewrite sat_single_PA, subst_comp, bounded_subst_2; last assumption. cbn.
-        rewrite num_subst. eapply Qdec_absoluteness; eauto.
+        rewrite num_subst. eapply Qdec_absoluteness_nat; eauto.
       - cbn. intros k' [d Hd] H2.
 
         assert (standard k') as [k'' <-].
@@ -907,7 +908,7 @@ Module completeness. Section completeness.
         rewrite !num_subst in H2.
 
         enough (P2 x) by (eapply P_disjoint; eassumption).
-        eapply φ2_sem' with (ρ := fun _ => 0). exists k''. eapply Qdec_absoluteness; eauto.
+        eapply φ2_sem' with (ρ := fun _ => 0). exists k''. eapply Qdec_absoluteness_nat; eauto.
     Qed.
     Lemma DR2 x : P2 x -> Qeq ⊢C ¬∃ φ1'[(num x)..].
     Proof.
@@ -923,9 +924,9 @@ Module completeness. Section completeness.
         rewrite num_subst in Hk1.
 
         enough (P1 x) by (eapply P_disjoint; eassumption).
-        eapply φ1_sem' with (ρ := (fun _ => 0)). exists k'. eapply Qdec_absoluteness; eauto.
+        eapply φ1_sem' with (ρ := (fun _ => 0)). exists k'. eapply Qdec_absoluteness_nat; eauto.
       - rewrite sat_single_PA, !subst_comp, bounded_subst_2; last assumption. cbn.
-        rewrite !num_subst. eapply Qdec_absoluteness; eauto.
+        rewrite !num_subst. eapply Qdec_absoluteness_nat; eauto.
     Qed.
   End value_disj.
 
@@ -979,7 +980,7 @@ Module completeness. Section completeness.
       intros M I ρ Mext HI.
       assert (exists k, (fun _ => 0) ⊨ T[num x .: num y .: (num k) ..]) as [k Hk] by now apply T_sem'.
       exists (iμ k). split.
-      - apply T_single_rho_model. now eapply Qdec_absoluteness; eauto.
+      - apply T_single_rho_model. now eapply Qdec_absoluteness_nat; eauto.
       - intros y' k' [d Hle] Hneq HT. cbn.
 
         cbn in Hle. rewrite !num_subst, !eval_num, Mext in Hle.
@@ -994,7 +995,7 @@ Module completeness. Section completeness.
 
         rewrite !sat_single_PA, !subst_comp, subst_T_bound in HT. cbn in HT.
         rewrite !num_subst in HT.
-        eapply Qdec_absoluteness with (ρN := fun _ => 0) in HT; try eauto.
+        eapply Qdec_absoluteness_nat with (ρN := fun _ => 0) in HT; try eauto.
 
         eapply Hy''k, f_func; eapply T_sem'; eauto.
     Qed.
@@ -1016,11 +1017,11 @@ Module completeness. Section completeness.
         eapply f_func.
         + exact Hf.
         + eapply T_sem' with (ρ := fun _ => 0). exists ks.
-          eapply Qdec_absoluteness; eauto. rewrite <-T_single_rho_model.
+          eapply Qdec_absoluteness_nat; eauto. rewrite <-T_single_rho_model.
           apply Hk1.
       - rewrite !num_subst, eval_num, Mext. contradict Hy. now eapply iμ_inj.
       - rewrite !sat_single_PA, !subst_comp, subst_T_bound. cbn. rewrite !num_subst.
-        eapply Qdec_absoluteness; eauto.
+        eapply Qdec_absoluteness_nat; eauto.
     Qed.
   End value.
 End completeness. End completeness.

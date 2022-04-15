@@ -6,9 +6,9 @@ Section abstract.
   Variable (theta : nat -> nat -\ bool).
   Hypothesis theta_universal : is_universal theta.
 
+  Context {S : Type} {neg : S -> S} (fs : FS S neg).
 
   Section halt.
-    Context {S : Type} {neg : S -> S} (fs : FS S neg).
     Hypothesis prov_dec : decidable fs.(P).
 
     Hypothesis Hrepr : exists (r : nat -> S), forall c,
@@ -27,8 +27,6 @@ Section abstract.
     Qed.
   End halt.
   Section halt.
-    Context {S : Type} {neg : S -> S} (fs : FS S neg).
-
     Hypothesis Hrepr : exists (r : nat -> S), forall c,
       (exists y, theta c c ▷ y) <-> fs ⊢F r c.
 
@@ -61,7 +59,6 @@ Section abstract.
   End halt.
 
   Section insep.
-    Context {S : Type} {neg : S -> S} (fs : FS S neg).
     Hypothesis prov_dec : decidable fs.(P).
 
     Hypothesis Hrepr : exists (r : nat -> S), forall c,
@@ -80,4 +77,55 @@ Section abstract.
         unfold decider, reflects in Hf.
         rewrite <-Hf. apply deepen_provability, Hr, H.
     Qed.
+  End insep.
+
+  Section insep.
+    Hypothesis Hrepr : exists (r : nat -> S), forall c,
+      (theta c c ▷ true -> fs ⊢F r c) /\
+      (theta c c ▷ false -> fs ⊢F neg (r c)).
+
+    Lemma insep_incompleteness : exists s, independent fs s.
+      destruct Hrepr as [r Hr].
+      destruct fs.(P_enumerable) as [prov Hprov].
+      pose proof fs.(S_discrete) as [S_eqdec]%discrete_iff.
+      destruct (is_provable fs) as [Pdec HPdec].
+
+      unshelve evar (f : nat -\ bool).
+      { intros c. unshelve eexists.
+        { intros k. exact ((Pdec (r c)).(core) k). }
+        cbn. intros y1 y2 k1 k2 H1 H2.
+        apply ((Pdec (r c)).(valid) y1 y2 k1 k2 H1 H2). }
+      assert (forall b c, Pdec (r c) ▷ b -> f c ▷ b) as Hfcorr.
+      { intros b c [k Hk]. exists k. exact Hk. }
+      destruct (@recursively_separating_diverge theta theta_universal f) as [c Hc].
+      { intros [] c Hc; apply Hfcorr, HPdec, Hr, Hc. }
+      exists (r c). split.
+      - specialize (Hc true). contradict Hc.
+        apply Hfcorr, HPdec, Hc.
+      - specialize (Hc false). contradict Hc.
+        apply Hfcorr, HPdec, Hc.
+    Qed.
+  End insep.
+
+  Section repr.
+    Lemma weak_representability_strong_separability' :
+      complete fs ->
+      ((exists r, forall c, (exists b,theta c c▷b) <-> fs ⊢F r c) <->
+      (exists r, forall c, (theta c c ▷ true -> fs ⊢F r c) /\
+      (theta c c ▷ false -> fs ⊢F neg (r c)))).
+    Proof. Abort.
+    Lemma weak_representability_strong_separability r :
+      complete fs ->
+      (( forall c, theta c c ▷ true <-> fs ⊢F r c) ->
+      ( forall c, (theta c c ▷ true -> fs ⊢F r c) /\
+      (theta c c ▷ false -> fs ⊢F neg (r c)))).
+    Proof.
+      intros complete. intros Hr c.
+      split.
+      + firstorder.
+      + intros H. apply undeepen_provability. 1: assumption.
+        intros Htrue%Hr. enough (true = false) by discriminate.
+        eapply (@part_functional _ (theta c c)); assumption.
+    Qed.
+  End repr.
 End abstract.

@@ -6,6 +6,10 @@ Local Set Implicit Arguments.
 Local Unset Strict Implicit.
 
 
+Ltac first s := only 1: s.
+Ltac last s := cycle -1; only 1: (s + fail).
+
+
 Lemma decidable_equiv X p q : (forall (x : X), p x <-> q x) -> decidable p -> decidable q.
 Proof.
   firstorder.
@@ -74,6 +78,7 @@ Proof.
   intros [k1 H1] [k2 H2].
   eapply (p.(valid)); eassumption.
 Qed.
+
 
 Notation "A -\ B" := (A -> part B) (at level 30).
 

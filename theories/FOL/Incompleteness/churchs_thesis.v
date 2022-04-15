@@ -56,12 +56,17 @@ Section ct.
   Qed.
   (* This can be used to show special_halting_undec, however this is tedious *)
 
+  (* Note: function might be partial, non-conventional definition *)
+  Definition strongly_separates (P1 P2 : nat -> Prop)  (f : nat -\ bool) :
+    (forall x, P1 x -> f x ▷ true) /\
+    (forall x, P2 x -> f x ▷ false).
+
+
 
   Lemma no_recursively_separating (f : nat -> bool) : 
     (* Looks closer to required condition by destructing b *)
     ~(forall b c, theta c c ▷ b -> f c = b).
   Proof.
-    (* THis is the correct proof, clean up! *)
     intros H.
     unshelve evar (g : nat -\ bool).
     { intros c. exists (fun _ => Some (negb (f c))).
@@ -73,20 +78,6 @@ Section ct.
     apply Hc in Hg. specialize (H (negb (f c)) c Hg).
     now destruct (f c).
   Qed.
-  (*Lemma no_recursively_separating' (f : nat -> bool) : 
-    (* Looks closer to required condition by destructing b *)
-    ~(forall b c, f c = b -> theta c c ▷ b).
-  Proof.
-    intros H.
-    unshelve evar (g : nat -\ bool).
-    { intros c. exists (fun _ => Some (negb (f c))).
-      congruence. }
-    destruct (theta_universal g) as [c Hc].
-    specialize (H (f c) c eq_refl).
-    rewrite <-Hc in H.
-    destruct H as [k Hk].
-    cbn in Hk. destruct (f c); cbn in Hk; discriminate.
-     Qed.*)
 
   Lemma recursively_separating_diverge (f : nat -\ bool):
     (forall b c, theta c c ▷ b -> f c ▷ b) ->
