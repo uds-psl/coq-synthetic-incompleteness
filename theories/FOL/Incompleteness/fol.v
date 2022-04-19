@@ -106,35 +106,13 @@ Section Qdec.
 
   Context {p : peirce}.
 
-  Definition Qdec φ := Qeq ⊢ φ \/ Qeq ⊢ ¬φ.
-
-
-  Ltac invert_bounds H :=
-    inversion H; subst;
-    repeat match goal with
-             H : existT _ _ _ = existT _ _ _ |- _ => apply Eqdep_dec.inj_pair2_eq_dec in H; try decide equality
-           end; subst.
+  (* TODO definition with substitutions *)
+  Definition Qdec φ := forall ρ, bounded 0 φ[ρ] -> Qeq ⊢ φ[ρ] \/ Qeq ⊢ ¬φ[ρ].
 
   Lemma Qdec_and φ ψ : Qdec φ -> Qdec ψ -> Qdec (φ ∧ ψ).
-  Proof.
-    intros Hφ Hψ. 
-    destruct Hφ as [H1|H1], Hψ as [H2|H2]; cbn.
-    - left. now fsplit.
-    - right. fintros. fdestruct 0. fapply H2. fapply 0.
-    - right. fintros. fdestruct 0. fapply H1. fapply 1.
-    - right. fintros. fdestruct 0. fapply H2. fapply 0.
-  Qed.
+  Proof. Admitted.
   Lemma Qdec_or φ ψ : Qdec φ -> Qdec ψ -> Qdec (φ ∨ ψ).
-  Proof.
-    intros Hφ Hψ. 
-    destruct Hφ as [H1|H1], Hψ as [H2|H2]; cbn.
-    - left. now fleft.
-    - left. now fleft.
-    - left. now fright.
-    - right. fintros. fdestruct 0.
-      + fapply H1. ctx.
-      + fapply H2. ctx.
-  Qed.
+  Proof. Admitted.
 
 
   (* Lemma form_ind_falsity_on : *)
@@ -150,10 +128,13 @@ Section Qdec.
   (*   all: intuition eauto 2. *)
   (* Qed. *)
 
+  (* TODO substitutions are wrong *)
+  Lemma Q_leibniz' φ :
+    Q ⊢ ∀∀ $0 == $1 ~> φ[$0..][↑] ~> φ[$1..][↑].
+  Proof. Admitted.
   Lemma Q_leibniz φ x y : 
     Qeq ⊢ x == y ~> φ[x..] ~> φ[y..].
-  Proof.
-  Admitted.
+  Proof. Admitted.
 
   Lemma add_zero_swap t :
     Qeq ⊢ ∀ $0 ⊕ zero == num t ~> $0 == num t.
@@ -294,5 +275,27 @@ Section Qdec.
           fapply H.
           -- fapply "H0".
           -- fapply "H2".
+  Qed.
+
+  Ltac invert_bounds :=
+    inversion 1; subst;
+    repeat match goal with
+             H : existT _ _ _ = existT _ _ _ |- _ => apply Eqdep_dec.inj_pair2_eq_dec in H; try decide equality
+           end; subst.
+  Lemma Qdec_fin_conj φ t :
+    Qdec φ -> Qdec (fin_conj t φ).
+  Proof.
+    intros Hφ. induction t; cbn; intros ρ.
+    - intros H. rewrite subst_comp in *.
+      apply Hφ, H.
+    - cbn. rewrite subst_comp. invert_bounds.
+      destruct (Hφ _ H6), (IHt _ H4).
+      + left. now fsplit.
+      + right. fintros. fdestruct 0.
+        fapply H1. fapply 1.
+      + right. fintros. fdestruct 0.
+        fapply H0. fapply 0.
+      + right. fintros. fdestruct 0.
+        fapply H1. fapply 1.
   Qed.
 End Qdec.
