@@ -283,6 +283,7 @@ FOL/Incompleteness/formal_systems.v
 FOL/Incompleteness/churchs_thesis.v
 FOL/Incompleteness/abstract_incompleteness.v
 FOL/Incompleteness/fol.v
+FOL/Incompleteness/qdec.v
 
 FOL/Proofmode/ProofMode.v
 FOL/Proofmode/StringToIdent.v
