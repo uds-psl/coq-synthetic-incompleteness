@@ -1,4 +1,3 @@
-
 (* TODO deduplicate imports *)
 From Undecidability.FOL.Incompleteness Require Import utils.
 From Undecidability.Synthetic Require Import DecidabilityFacts EnumerabilityFacts ReducibilityFacts.
@@ -152,6 +151,13 @@ Section Qdec.
   Qed.
   Lemma pless_succ t : Qeq ⊢ ∀ ($0 ⧀= num t) ~> ($0 ⧀= σ (num t)).
   Proof. 
+    induction t; fstart; fintros.
+    - rewrite !pless_subst. cbn.
+      fassert (x == zero).
+      { fapply pless_zero_eq.  rewrite pless_subst. ctx.  }
+      rewrite !pless_eq. cbn. fexists (σ zero). frewrite "H0".
+      fapply ax_sym. fapply ax_add_zero.
+    - 
     (* induction t. *)
     (* - intros x y. destruct x as [|x']. *)
     (*   + cbn. injection 1.  easy. *)
@@ -189,7 +195,27 @@ Section Qdec.
 
   
   Lemma Q_eqdec t : Qeq ⊢ ∀ $0 == (num t) ∨ ¬($0 == num t).
-  Proof. Admitted.
+  Proof. 
+    induction t; fstart; fintros.
+    - fassert (ax_cases); first ctx.
+      fdestruct ("H" x).
+      + fleft. frewrite "H".
+        fapply ax_refl.
+      + fright. fdestruct "H". frewrite "H".
+        fintros. fapply (ax_zero_succ x0).
+        fapply ax_sym. ctx.
+    - rewrite num_subst.
+      fassert (ax_cases); first ctx.
+      fdestruct ("H" x).
+      + fright. frewrite "H".
+        fapply ax_zero_succ.
+      + fdestruct "H". frewrite "H".
+        fspecialize (IHt x0). rewrite num_subst in IHt.
+        fdestruct IHt.
+        * fleft. fapply ax_succ_congr. fapply "H0".
+        * fright. fintros. fapply "H0".
+          fapply ax_succ_inj. fapply "H1".
+  Qed.
 
 
   Fixpoint fin_conj n φ := match n with
@@ -249,25 +275,38 @@ Section Qdec.
     cbn. induction t; fstart; cbn.
     - fsplit.
       + fintros. do 2 fdestruct "H".  rewrite pless_subst. cbn.
-        fassert (x == zero) by admit.
+        fassert (x == zero).
+        { fapply pless_zero_eq. rewrite pless_subst. cbn.
+          fapply "H". }
         admit.
       + fintros. fexists zero. rewrite pless_subst. cbn. fsplit.
-        * admit.
+        * pose proof (pless_sym 0). cbn in H.
+          fapply H.
         * ctx.
     - fsplit.
       + fintros. do 2 fdestruct "H". rewrite pless_subst. cbn. rewrite num_subst.
-        fassert (x == σ (num t) ∨ ¬(x == σ (num t))) by admit.
+        fassert (x == σ (num t) ∨ ¬(x == σ (num t))).
+        { pose proof (Q_eqdec (S t)). cbn in H.
+          fspecialize (H x). rewrite num_subst in H.
+          fapply H. }
         fdestruct "H1".
         * fright. admit.
-        * fleft. fapply IHt. admit.
+        * fleft. fapply IHt. fexists x. fsplit; last ctx.
+          rewrite pless_subst. rewrite num_subst. cbn.
+          pose proof (pless_sigma_neq t).
+          fspecialize (H x). rewrite !pless_subst in H. cbn in H.
+          rewrite num_subst in H.
+          fapply H; ctx.
       + fintros. fdestruct "H".
         * fapply IHt in "H". fdestruct "H". fexists x. fdestruct "H".
           fsplit; last ctx.
           rewrite !pless_subst. cbn. rewrite num_subst.
-          admit.
+          pose proof (pless_succ t). fspecialize (H x).
+          rewrite !pless_subst in H. cbn in H. rewrite num_subst in H.
+          fapply H. ctx.
         * fexists (σ num t). rewrite pless_subst. cbn. rewrite num_subst.
           fsplit; last ctx.
-          admit.
+          pose proof (pless_sym (S t)). cbn in H. fapply H.
   Admitted.
   Lemma Qdec_fin_conj φ t :
     Qdec φ -> Qdec (fin_conj t φ).
