@@ -13,13 +13,65 @@ From Undecidability.FOL.Proofmode Require Import Theories ProofMode Hoas.
 Require Import String.
 Open Scope string_scope.
 
+
+(* Notation for satisfying list theories *)
+Notation "I ⊨=L T" := (forall psi, List.In psi T -> I ⊨= psi) (at level 20).
+(* Notation for explicitely giving model *)
+Notation "I ; rho '⊨' phi" := (@sat _ _ _ I _ rho phi) (at level 20, rho at next level).
+
 Section lemmas.
   Existing Instance PA_preds_signature.
   Existing Instance PA_funcs_signature.
+  Existing Instance interp_nat.
 
   Lemma num_subst x ρ : (num x)`[ρ] = num x.
   Proof.
     induction x; cbn; congruence.
+  Qed.
+
+  Lemma num_bound n k : bounded_t k (num n).
+  Proof.
+    induction n; cbn; constructor.
+    - intros t []%Vectors.In_nil.
+    - intros t ->%vec_singleton.
+      assumption.
+  Qed.
+
+  Lemma subst_bound psi : (* TODO move to util *)
+      forall sigma N B, bounded N psi -> (forall n, n < N -> bounded_t B (sigma n) ) -> bounded B (psi[sigma]).
+  Proof. Admitted. (* WIP by Marc *)
+
+  Lemma Q_sound_class φ : (forall P, P \/ ~P) -> Qeq ⊢C φ -> interp_nat ⊨= φ.
+  Proof.
+    intros LEM H ρ. eapply soundness_class.
+    - assumption.
+    - eassumption.
+    - apply nat_is_Q_model.
+  Qed.
+  Lemma Q_sound_intu φ : Qeq ⊢I φ -> interp_nat ⊨= φ.
+  Proof.
+    intros H ρ. eapply soundness.
+    - eassumption.
+    - apply nat_is_Q_model. 
+  Qed.
+
+  Lemma iμ_eval_num M (I : interp M) k ρ : iμ k = eval ρ (num k).
+  Proof.
+    induction k; cbn; congruence.
+  Qed.
+  Lemma iμ_standard (k : nat) : iμ k = k.
+  Proof.
+    induction k; cbn; congruence.
+  Qed.
+
+  Lemma sat_single_PA M (I : interp M) φ ρ k : (iμ k .: ρ) ⊨ φ <-> ρ ⊨ φ[(num k)..].
+  Proof.
+    erewrite iμ_eval_num. apply sat_single.
+  Qed.
+  Lemma sat_single_nat φ ρ k : interp_nat; (k .: ρ) ⊨ φ <-> interp_nat; ρ ⊨ φ[(num k)..].
+  Proof.
+    erewrite <-iμ_standard at 1.
+    now rewrite sat_single_PA.
   Qed.
 End lemmas.
 
@@ -98,5 +150,5 @@ Section PM.
   Notation "x '⊗h' y" := (bFunc Mult (Vector.cons bterm x 1 (Vector.cons bterm y 0 (Vector.nil bterm))) ) (at level 38) : hoas_scope. 
      Notation "x '==h' y" := (bAtom Eq (Vector.cons bterm x 1 (Vector.cons bterm y 0 (Vector.nil bterm))) ) (at level 40) : hoas_scope.
 End PM.
-Ltac custom_simpl := rewrite ?pless_subst; cbn; rewrite ?num_subst; cbn.
+Global Ltac custom_simpl := cbn; rewrite ?pless_subst; cbn; rewrite ?num_subst; cbn.
 
