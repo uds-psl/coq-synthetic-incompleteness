@@ -35,11 +35,12 @@ Section lemmas.
     - intros t []%Vectors.In_nil.
     - intros t ->%vec_singleton.
       assumption.
-  Qed.
+   Qed.
 
   Lemma subst_bound psi : (* TODO move to util *)
       forall sigma N B, bounded N psi -> (forall n, n < N -> bounded_t B (sigma n) ) -> bounded B (psi[sigma]).
-  Proof. Admitted. (* WIP by Marc *)
+  Proof. 
+  Admitted. (* by Marc *)
 
   Lemma Q_sound_class φ : (forall P, P \/ ~P) -> Qeq ⊢C φ -> interp_nat ⊨= φ.
   Proof.
@@ -145,10 +146,60 @@ Section PM.
   Qed.
 
 
-  Notation "'σh' x" := (bFunc Succ (Vector.cons bterm x 0 (Vector.nil bterm))) (at level 32) : hoas_scope.
-  Notation "x '⊕h' y" := (bFunc Plus (Vector.cons bterm x 1 (Vector.cons bterm y 0 (Vector.nil bterm))) ) (at level 39) : hoas_scope.
-  Notation "x '⊗h' y" := (bFunc Mult (Vector.cons bterm x 1 (Vector.cons bterm y 0 (Vector.nil bterm))) ) (at level 38) : hoas_scope. 
-     Notation "x '==h' y" := (bAtom Eq (Vector.cons bterm x 1 (Vector.cons bterm y 0 (Vector.nil bterm))) ) (at level 40) : hoas_scope.
 End PM.
-Global Ltac custom_simpl := cbn; rewrite ?pless_subst; cbn; rewrite ?num_subst; cbn.
+Global Ltac custom_simpl ::= cbn; rewrite ?pless_subst; cbn; rewrite ?num_subst; cbn.
+Global Notation "'σh' x" := (bFunc Succ (Vector.cons bterm x 0 (Vector.nil bterm))) (at level 32) : hoas_scope.
+Global Notation "x '⊕h' y" := (bFunc Plus (Vector.cons bterm x 1 (Vector.cons bterm y 0 (Vector.nil bterm))) ) (at level 39) : hoas_scope.
+Global Notation "x '⊗h' y" := (bFunc Mult (Vector.cons bterm x 1 (Vector.cons bterm y 0 (Vector.nil bterm))) ) (at level 38) : hoas_scope. 
+Global Notation "x '==h' y" := (bAtom Eq (Vector.cons bterm x 1 (Vector.cons bterm y 0 (Vector.nil bterm))) ) (at level 40) : hoas_scope.
 
+
+Global Ltac invert_bounds :=
+  inversion 1; subst;
+  repeat match goal with
+           H : existT _ _ _ = existT _ _ _ |- _ => apply Eqdep_dec.inj_pair2_eq_dec in H; try decide equality
+         end; subst.
+
+Section n.
+  Existing Instance PA_preds_signature.
+  Existing Instance PA_funcs_signature.
+  Existing Instance intu.
+
+  Lemma closed_term_is_num s : bounded_t 0 s -> { n & Qeq ⊢I s == num n }.
+  Proof.
+    intros H. 
+    induction s using term_rect. 2: destruct F.
+    - exfalso. inversion H. lia.
+    - rewrite (vec_0_nil v). exists 0.
+      fapply ax_refl.
+    - destruct (vec_1_inv v) as [t ->]. destruct (X t) as [n Hn].
+      + left.
+      + revert H. invert_bounds. apply H1. left.
+      + exists (S n). fapply ax_succ_congr. apply Hn.
+    - destruct (vec_2_inv v) as (t1 & t2 & ->). 
+      destruct (X t1, X t2) as [[n1 Hn1] [n2 Hn2]].
+      + left.
+      + revert H. invert_bounds. apply H1. left.
+      + right. left.
+      + revert H. invert_bounds. apply H1. right. left.
+      + exists (n1 + n2).
+        pose proof num_add_homomorphism as H'.
+        refine ((fun H'' => _) (H' _ Qeq _ n1 n2)).
+        2: { firstorder. }
+        frewrite <-H''.
+        fapply ax_add_congr; assumption.
+    - destruct (vec_2_inv v) as (t1 & t2 & ->). 
+      destruct (X t1, X t2) as [[n1 Hn1] [n2 Hn2]].
+      + left.
+      + revert H. invert_bounds. apply H1. left.
+      + right. left.
+      + revert H. invert_bounds. apply H1. right. left.
+      + exists (n1 * n2).
+        pose proof num_mult_homomorphism as H'.
+        refine ((fun H'' => _) (H' _ Qeq _ n1 n2)).
+        2: { firstorder. }
+        frewrite <-H''.
+        fapply ax_mult_congr; assumption.
+  Qed.
+  
+End n.

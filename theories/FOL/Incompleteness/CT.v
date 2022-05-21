@@ -150,7 +150,6 @@ Section CT.
     Variable fs : FS.
 
     (* Kleene indirectly mentions we can strengthen this assumption and instead drop consistency? *)
-    (* TODO rephrase using self-halting *)
     Hypothesis Hrepr : forall c, Sigma (repr : nat -> sentences),
       forall x, fhalts (theta c) x <-> provable (repr x).
     

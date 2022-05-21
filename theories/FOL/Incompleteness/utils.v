@@ -1,9 +1,13 @@
 From Undecidability.Synthetic Require Import DecidabilityFacts EnumerabilityFacts.
 From Undecidability.Shared Require Import embed_nat Dec.
+Require Import Vector.
+Require Import Undecidability.Shared.Libs.DLW.Vec.vec.
 Require Import ConstructiveEpsilon.
+From Equations Require Import Equations DepElim.
 
 Local Set Implicit Arguments.
 Local Unset Strict Implicit.
+
 
 
 Ltac first s := only 1: s.
@@ -39,6 +43,18 @@ Proof.
   - decide (f n = Some x); decide (g n = Some x); firstorder.
 Qed.
 
+Lemma vec_1_inv X (v : vec X 1) : {a & v = a ## vec_nil}.
+Proof.
+Admitted.
+Lemma vec_2_inv X (v : vec X 2) : { a & { b & v = a ## b ## vec_nil} }.
+Proof.
+Admitted.
+Lemma vec_singleton {X} (a b : X) : Vector.In a (Vector.cons _ b _ (Vector.nil _)) -> a = b.
+Proof.
+  inversion 1.
+  { reflexivity. }
+  inversion H2.
+Qed.
 
 Definition core_valid {Y : Type} (core : nat -> option Y) :=
   forall y1 y2 k1 k2, core k1 = Some y1 -> core k2 = Some y2 -> y1 = y2.
@@ -56,10 +72,8 @@ Notation "'partial' f " := ({| core := f; valid := _ |}) (at level 30, only prin
 
 Definition part_stationary Y (p : part Y) :=
   forall y k1 k2, p.(core) k1 = Some y -> k2 >= k1 -> p.(core) k2 = Some y.
-(* TODO transfer stationarity proofs to these forms of parts *)
 
 (* TODO rename *)
-(* NOTE this crucially relies on bool being a finite type *)
 Lemma total_part_decidable (p : part bool) : (exists y, p ▷ y) -> {y | p ▷ y}.
 Proof.
   intro Hy. 

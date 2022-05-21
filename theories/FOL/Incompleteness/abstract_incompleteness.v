@@ -106,6 +106,24 @@ Section abstract.
         apply Hfcorr, HPdec, Hc.
     Qed.
   End insep.
+  Section insep.
+    Variable (fs' : FS S neg).
+    Hypothesis fs'_extension : extension fs' fs.
+
+    Hypothesis Hrepr : exists (r : nat -> S), forall c,
+      (theta c c ▷ true -> fs' ⊢F r c) /\
+      (theta c c ▷ false -> fs' ⊢F neg (r c)).
+
+    Lemma insep_essential_incompleteness : exists s, independent fs s.
+    Proof.
+      apply insep_incompleteness. destruct Hrepr as [r Hr].
+      exists r. intros c. destruct (Hr c) as [Hr1 Hr2].
+      split; intros H.
+      - apply fs'_extension. auto.
+      - apply fs'_extension. auto.
+    Qed.
+
+  End insep.
 
   Section repr.
     Lemma weak_representability_strong_separability' :

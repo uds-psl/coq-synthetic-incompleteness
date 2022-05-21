@@ -10,29 +10,30 @@ From Equations Require Import Equations DepElim.
 From Undecidability.FOL.Proofmode Require Import Theories ProofMode Hoas.
 From Undecidability.FOL.Incompleteness Require Import fol.
 
+Require Import Setoid.
+
 Require Import Undecidability.Shared.Libs.DLW.Vec.vec.
 
 Require Import String.
 Open Scope string_scope.
 (* copied from syntax_facts *) 
-Ltac invert_bounds :=
-  inversion 1; subst;
-  repeat match goal with
-           H : existT _ _ _ = existT _ _ _ |- _ => apply Eqdep_dec.inj_pair2_eq_dec in H; try decide equality
-         end; subst.
 Section Qdec.
   Existing Instance PA_preds_signature.
   Existing Instance PA_funcs_signature.
 
   Context {p : peirce}.
 
-  (* IDEA: potentially using typeclasses? *)
   Definition Qdec φ := forall ρ, bounded 0 φ[ρ] -> Qeq ⊢ φ[ρ] \/ Qeq ⊢ ¬φ[ρ].
 
   Lemma Qdec_subst φ ρ : Qdec φ -> Qdec φ[ρ].
   Proof.
     intros H ρ' Hb. rewrite subst_comp. apply H.
     rewrite <-subst_comp. apply Hb.
+  Qed.
+
+  Lemma Qdec_bot : Qdec ⊥.
+  Proof.
+    intros ρ Hb. right. fintros. ctx.
   Qed.
 
   Lemma Qdec_and φ ψ : Qdec φ -> Qdec ψ -> Qdec (φ ∧ ψ).
@@ -65,29 +66,85 @@ Section Qdec.
   Qed.
 
 
-  (* Lemma form_ind_falsity_on : *)
-  (*   forall P : form -> Prop, *)
-  (*     P falsity -> *)
-  (*     (forall P0 (t : vec term (ar_preds P0)), P (atom P0 t)) -> *)
-  (*     (forall (b0 : binop) (f1 : form), P f1 -> forall f2 : form, P f2 -> P (bin b0 f1 f2)) -> *)
-  (*     (forall (q : quantop) (f2 : form), P f2 -> P (quant q f2)) -> *)
-  (*     forall (f4 : form), P f4. *)
-  (* Proof. *)
-  (*   intros. specialize (form_ind (fun ff => match ff with falsity_on => P | _ => fun _ => True end)). *)
-  (*   intros H'. apply H' with (f3 := falsity_on); clear H'. all: intros; try destruct b; trivial. *)
-  (*   all: intuition eauto 2. *)
-  (* Qed. *)
+  Lemma form_ind_falsity_on :
+    forall P : form -> Prop,
+      P falsity ->
+      (forall P0 (t : vec term (ar_preds P0)), P (atom P0 t)) ->
+      (forall (b0 : binop) (f1 : form), P f1 -> forall f2 : form, P f2 -> P (bin b0 f1 f2)) ->
+      (forall (q : quantop) (f2 : form), P f2 -> P (quant q f2)) ->
+      forall (f4 : form), P f4.
+  Proof.
+    intros. specialize (form_ind (fun ff => match ff with falsity_on => P | _ => fun _ => True end)).
+    intros H'. apply H' with (f3 := falsity_on); clear H'. all: intros; try destruct b; trivial.
+    all: intuition eauto 2.
+  Qed.
 
-  (* TODO substitutions are wrong *)
-  Lemma Q_leibniz' φ :
-    Q ⊢ ∀∀ $0 == $1 ~> φ[$0..][↑] ~> φ[$1..][↑].
-  Proof. Admitted.
+  Lemma Q_leibniz_t a x y : Qeq ⊢ x == y ~> a`[x..] == a`[y..].
+  Proof.
+    induction a.
+    - destruct x0; cbn.
+      + fintros. ctx.
+      + fintros. fapply ax_refl.
+    - destruct F.
+      + cbn in v. rewrite (vec_0_nil v).
+        fintros. fapply ax_refl.
+      + cbn in v. 
+        destruct (vec_1_inv v) as [z ->]. cbn.
+        fintros. fapply (ax_succ_congr z`[y..] z`[x..]).
+        frevert 0. fapply IH. apply Vector.In_cons_hd.
+      + destruct (vec_2_inv v) as (a & b & ->).
+        cbn. fintros. fapply ax_add_congr.
+        all: frevert 0; fapply IH.
+        * apply Vector.In_cons_hd.
+        * apply Vector.In_cons_tl, Vector.In_cons_hd.
+      + destruct (vec_2_inv v) as (a & b & ->).
+        cbn. fintros. fapply ax_mult_congr.
+        all: frevert 0; fapply IH.
+        * apply Vector.In_cons_hd.
+        * apply Vector.In_cons_tl, Vector.In_cons_hd.
+  Qed.
   Lemma Q_leibniz φ x y : 
     Qeq ⊢ x == y ~> φ[x..] ~> φ[y..].
-  Proof. Admitted.
-
-
-
+  Proof. 
+    enough (Qeq ⊢ x == y ~> φ[x..] <~> φ[y..]).
+    { fintros. fapply H; ctx. }
+    revert x y. induction φ using form_ind_falsity_on; intros x y.
+    - cbn. fintros. fsplit; fintros; ctx. 
+    - destruct P0. cbn in t. 
+      destruct (vec_2_inv t) as (a & b & ->).
+      cbn. fstart. fintros.
+      fassert (a`[x..] == a`[y..]).
+      { pose proof (Q_leibniz_t a x y).
+        fapply H. fapply "H". }
+      fassert (b`[x..] == b`[y..]).
+      { pose proof (Q_leibniz_t b x y).
+        fapply H. fapply "H". }
+      frewrite "H0". frewrite "H1".
+      fsplit; fintros; ctx.
+    - destruct b0; cbn; fstart; fintros.
+      all: fassert (φ1[x..] <~> φ1[y..]) by (fapply IHφ1; fapply "H").
+      all: fassert (φ2[x..] <~> φ2[y..]) by (fapply IHφ2; fapply "H").
+      all: fsplit.
+      + fintros "[H2 H3]". fsplit.
+        * fapply "H0". ctx.
+        * fapply "H1". ctx.
+      + fintros "[H2 H3]". fsplit.
+        * fapply "H0". ctx.
+        * fapply "H1". ctx.
+      + fintros "[H2|H3]".
+        * fleft. fapply "H0". ctx.
+        * fright. fapply "H1". ctx.
+      + fintros "[H2|H3]".
+        * fleft. fapply "H0". ctx.
+        * fright. fapply "H1". ctx.
+      + fintros "H2" "H3". 
+        fapply "H1". fapply "H2". fapply "H0". ctx.
+      + fintros "H2" "H3". 
+        fapply "H1". fapply "H2". fapply "H0". ctx.
+    - destruct q.
+      + admit.
+      + admit.
+  Admitted.
 
 
   Lemma add_zero_swap t :
@@ -101,8 +158,7 @@ Section Qdec.
         fexfalso. fapply (ax_zero_succ (x0 ⊕ zero)).
         frewrite <- (ax_add_rec zero x0). 
         frewrite <-"H0". fapply ax_sym. ctx.
-    - custom_simpl. 
-      fassert (ax_cases); first ctx.
+    - fassert (ax_cases); first ctx.
       fdestruct ("H0" x).
       + fexfalso. fapply (ax_zero_succ (num t)).
         frewrite <-"H". frewrite "H0".
@@ -125,7 +181,9 @@ Section Qdec.
   Qed.
   Lemma add_rec_swap t :
     Qeq ⊢ ∀ ∀ $0 ⊕ σ $ 1 == σ num t ~> $0 ⊕ $1 == num t.
-  Proof. Admitted.
+  Proof. 
+
+  Admitted.
 
 
   Lemma pless_zero_eq : Qeq ⊢ ∀ ($0 ⧀= zero) ~> $0 == zero.
@@ -134,6 +192,7 @@ Section Qdec.
     fstart. fintros. fdestruct "H".
     fassert ax_cases.
     { ctx. }
+    unfold ax_cases.
     fdestruct ("H0" x).
     - fapply "H0".
     - fdestruct "H0".
@@ -144,12 +203,17 @@ Section Qdec.
   Lemma pless_succ t : Qeq ⊢ ∀ ($0 ⧀= num t) ~> ($0 ⧀= σ (num t)).
   Proof. 
     induction t; fstart; fintros.
-    - custom_simpl. 
-      fassert (x == zero).
-      { fapply pless_zero_eq. custom_simpl. ctx.  }
+    - fassert (x == zero).
+      { fapply pless_zero_eq. ctx. }
       rewrite !pless_eq. cbn. fexists (σ zero). frewrite "H0".
       fapply ax_sym. fapply ax_add_zero.
-    - 
+    - fassert (ax_cases); first ctx.
+      fdestruct "H".
+      fdestruct ("H0" x).
+      + rewrite !pless_eq. fexists (σ (σ num t)). fstart. (*?*)
+        frewrite "H0". frewrite (ax_add_zero (σ (σ num t))). fapply ax_refl.
+      + fdestruct "H0". rewrite !pless_eq. fdestruct "H".
+        fexists x1.
     (* induction t. *)
     (* - intros x y. destruct x as [|x']. *)
     (*   + cbn. injection 1.  easy. *)
@@ -195,8 +259,7 @@ Section Qdec.
       + fright. fdestruct "H". frewrite "H".
         fintros. fapply (ax_zero_succ x0).
         fapply ax_sym. ctx.
-    - rewrite num_subst.
-      fassert (ax_cases); first ctx.
+    - fassert (ax_cases); first ctx.
       fdestruct ("H" x).
       + fright. frewrite "H".
         fapply ax_zero_succ.
@@ -242,7 +305,6 @@ Section Qdec.
           rewrite pless_subst. cbn. rewrite num_subst.
           fapply H.
       + fintros. fdestruct "H". 
-        rewrite pless_subst. cbn. rewrite num_subst.
         fassert (x == σ (num t) ∨ ¬(x == σ (num t))).
         { pose proof (Q_eqdec (S t)). cbn in H.
           fspecialize (H x). rewrite !num_subst in H.
@@ -252,7 +314,6 @@ Section Qdec.
           -- feapply ax_sym. fapply "H2".
           -- fapply "H1".
         * fdestruct IHt. fapply "H4"; first fapply "H".
-          rewrite pless_subst. cbn. rewrite num_subst.
           pose proof (pless_sigma_neq t).
           fspecialize (H x). 
           rewrite !pless_subst in H. cbn in H. rewrite !num_subst in H.
@@ -265,25 +326,24 @@ Section Qdec.
   Proof.
     cbn. induction t; fstart; cbn.
     - fsplit.
-      + fintros. do 2 fdestruct "H".  rewrite pless_subst. cbn.
+      + fintros. do 2 fdestruct "H". 
         fassert (x == zero).
         { fapply pless_zero_eq. rewrite pless_subst. cbn.
           fapply "H". }
-        admit.
-      + fintros. fexists zero. rewrite pless_subst. cbn. fsplit.
+        feapply Q_leibniz; ctx.
+      + fintros. fexists zero. fsplit.
         * pose proof (pless_sym 0). cbn in H.
           fapply H.
         * ctx.
     - fsplit.
-      + fintros. do 2 fdestruct "H". rewrite pless_subst. cbn. rewrite num_subst.
+      + fintros. do 2 fdestruct "H". 
         fassert (x == σ (num t) ∨ ¬(x == σ (num t))).
         { pose proof (Q_eqdec (S t)). cbn in H.
           fspecialize (H x). rewrite num_subst in H.
           fapply H. }
         fdestruct "H1".
-        * fright. admit.
+        * fright. feapply Q_leibniz; ctx.
         * fleft. fapply IHt. fexists x. fsplit; last ctx.
-          rewrite pless_subst. rewrite num_subst. cbn.
           pose proof (pless_sigma_neq t).
           fspecialize (H x). rewrite !pless_subst in H. cbn in H.
           rewrite num_subst in H.
@@ -291,14 +351,13 @@ Section Qdec.
       + fintros. fdestruct "H".
         * fapply IHt in "H". fdestruct "H". fexists x. fdestruct "H".
           fsplit; last ctx.
-          rewrite !pless_subst. cbn. rewrite num_subst.
           pose proof (pless_succ t). fspecialize (H x).
           rewrite !pless_subst in H. cbn in H. rewrite num_subst in H.
           fapply H. ctx.
-        * fexists (σ num t). rewrite pless_subst. cbn. rewrite num_subst.
+        * fexists (σ num t). 
           fsplit; last ctx.
           pose proof (pless_sym (S t)). cbn in H. fapply H.
-  Admitted.
+  Qed.
   Lemma Qdec_fin_conj φ t :
     Qdec φ -> Qdec (fin_conj t φ).
   Proof.
@@ -328,6 +387,21 @@ Section Qdec.
       + fapply H1. ctx.
       + fapply H0. ctx.
   Qed.
+
+  Lemma Qdec_bounded_forall t φ :
+    Qdec φ -> Qdec (∀ $0 ⧀= t`[↑] ~> φ).
+  Proof.
+  Admitted.
+  Lemma Qdec_bounded_exists t φ :
+    Qdec φ -> Qdec (∃ ($0 ⧀= t`[↑]) ∧ φ).
+  Proof.
+  Admitted.
+  Lemma Qdec_bounded_exists_comm t φ :
+    Qdec φ -> Qdec (∃ ($0 ⧀=comm t`[↑]) ∧ φ).
+  Proof.
+  Admitted.
+
+  
 End Qdec.
 
 Section Sigma1.
@@ -358,12 +432,23 @@ Section Sigma1.
     - constructor. apply Qdec_subst, H.
   Qed.
 
-  Lemma exists_compression_2 φ : Qdec φ -> exists ψ, Qdec ψ /\ Qeq ⊢ (∃∃φ) <~> (∃ψ).
+  Lemma exists_compression_2 φ n : Qdec φ -> bounded (S (S n)) φ -> exists ψ, Qdec ψ /\ bounded (S n) ψ /\ Qeq ⊢ (∃∃φ) <~> (∃ψ).
   Proof.
-    intros Hd.
+    intros HQ Hb.
     exists (∃ ($0 ⧀= $1) ∧ ∃ ($0 ⧀=comm $2) ∧ φ[up (up (S >> var))]).
-    split.
-    { admit. }
+    repeat split.
+    { apply (@Qdec_bounded_exists _ $0), (@Qdec_bounded_exists_comm _ $1).
+      apply Qdec_subst, HQ. }
+    { constructor. constructor.
+      { rewrite pless_eq. 
+        eapply (@bounded_up _ _ _ _ 2); last lia.
+        repeat solve_bounds. }
+      constructor. constructor.
+      { eapply (@bounded_up _ _ _ _ 3); last lia.
+        constructor. repeat solve_bounds. }
+      eapply subst_bound; first eassumption.
+      intros n' H'. Print bounded_t.
+      destruct n' as [|[|n']]; cbn; unfold "↑"; cbn; constructor; lia. }
     apply CI.
     - apply II.
       eapply ExE.
@@ -394,7 +479,7 @@ Section Sigma1.
         apply Ctx. right. now left. }
       rewrite !subst_comp. erewrite subst_ext; first instantiate (1 := var).
       + rewrite subst_var. now apply Ctx.
-      + now intros [|[|[|n]]]; cbn.
+      + now intros [|[|[|k]]]; cbn.
     - apply II.
       eapply ExE.
       { apply Ctx; now left. }
@@ -416,8 +501,8 @@ Section Sigma1.
       2: { intros f H. now do 4 right. }
       apply II. rewrite !subst_comp.
       apply Ctx. left.
-      apply subst_ext. now intros [|[|[|n]]].
-  Admitted.
+      apply subst_ext. now intros [|[|[|k]]].
+  Qed.
 
   Lemma exists_equiv φ ψ : Qeq ⊢ φ ~> ψ -> (∃φ :: Qeq) ⊢ (∃ψ).
   Proof.
@@ -431,28 +516,38 @@ Section Sigma1.
     now apply Ctx.
   Qed.
 
-  Lemma exists_compression φ n : Qdec φ ->
-                                 exists ψ, Qdec ψ /\ Qeq ⊢ exist_times n φ <~> ∃ ψ.
+  Lemma exists_compression φ k n : bounded (n + k) φ -> Qdec φ ->
+    exists ψ, Qdec ψ /\ bounded (S k) ψ /\ Qeq ⊢ exist_times n φ <~> ∃ ψ.
   Proof.
-    intros Hd. induction n as [|n (φ' & HΔ & Hφ')].
-    all: cbn [exist_times iter].
-    - exists φ[↑]. split; first now apply Qdec_subst.
+    intros Hb HQ. revert Hb. induction n as [|n IH] in k |-*.
+    2: destruct n. all: cbn.
+    all: intros Hb.
+    - exists φ[↑]. repeat split.
+      { now apply Qdec_subst. }
+      { eapply subst_bound; first apply Hb. intros n H. constructor. lia. }
       apply CI.
       + apply II. fexists $0. apply Ctx. now left.
       + apply II. eapply ExE; first (apply Ctx; now left).
         apply Ctx. now left.
-    - destruct (@exists_compression_2 φ' HΔ) as (ψ & HΔψ & Hψ).
-      exists ψ. split; first easy.
+    - exists φ. repeat split.
+      + assumption.
+      + cbn. replace (k - 0) with k by lia. assumption.
+      + fsplit; fintros; ctx.
+    - destruct (IH (S k)) as (ψ & HQ' & Hb' & H). 
+      { now replace (S n + S k) with (S (S n) + k) by lia. }
+      edestruct (@exists_compression_2 ψ) as (ψ' & HΔψ & Hbψ' & Hψ).
+      1-2: eassumption.
+      exists ψ'. repeat split; try easy.  cbn in H.
       apply CI.
       + apply II. eapply IE.
         { eapply CE1, Weak; first apply Hψ. now right. }
-        eapply exists_equiv, CE1, Hφ'.
-      + apply II. eapply IE with (phi := ∃∃φ'); first last.
+        eapply exists_equiv, CE1. eassumption.
+      + apply II. eapply IE with (phi := ∃∃ψ); first last.
         { eapply IE.
           - eapply CE2, Weak; first apply Hψ. now right.
           - now apply Ctx. }
         eapply Weak with (A := Qeq); last now right.
-        apply II. apply exists_equiv. eapply CE2, Hφ'.
+        apply II. apply exists_equiv. eapply CE2. eassumption.
   Qed.
 
   Lemma Σ1_exist_times φ : Σ1 φ -> exists n ψ, Qdec ψ /\ φ = exist_times n ψ.
@@ -461,10 +556,21 @@ Section Sigma1.
     - exists (S n), ψ. now rewrite Hψ.
     - now exists 0, φ.
   Qed.
-  Lemma Σ1_compression φ : Σ1 φ -> exists ψ, Qdec ψ /\ Qeq ⊢ φ <~> ∃ψ.
+  Lemma bounded_exist_times φ n k : bounded (n + k) φ <-> bounded k (exist_times n φ).
   Proof.
-    intros (n & ψ & HΔ & ->)%Σ1_exist_times.
-    now apply exists_compression.
+    induction n in k |-*; split.
+    - easy.
+    - easy.
+    - cbn. intros H. constructor. apply IHn. replace (n + S k) with (S n + k) by lia. apply H.
+    - cbn. invert_bounds. replace (S (n + k)) with (n + (S k)) by lia. now apply IHn. 
+  Qed.
+
+  Lemma Σ1_compression φ n : bounded n φ -> Σ1 φ -> exists ψ, Qdec ψ /\ bounded (S n) ψ /\ Qeq ⊢ φ <~> ∃ψ.
+  Proof.
+    intros Hb (k & ψ & HΔ & ->)%Σ1_exist_times.
+    Check exists_compression.
+    destruct (@exists_compression ψ n k) as (ψ' & HΔ' & Hb' & H').
+    all: firstorder using bounded_exist_times.
   Qed.
 End Sigma1.
 Section Sigma1completeness.
@@ -473,9 +579,12 @@ Section Sigma1completeness.
 
   Existing Instance intu.
 
-  Lemma Σ1_completeness φ ρ : Σ1 φ -> bounded 0 φ[ρ] -> interp_nat ⊨= φ[ρ] -> Qeq ⊢ φ[ρ].
+  (* substitution here as its needed for the induction *)
+  Lemma Σ1_completeness φ : Σ1 φ -> bounded 0 φ -> interp_nat ⊨= φ -> Qeq ⊢ φ.
   Proof.
-    induction 1 as [φ H IH|φ H] in ρ |-*.
+    enough (forall ρ, Σ1 φ -> bounded 0 φ[ρ] -> interp_nat ⊨= φ[ρ] -> Qeq ⊢ φ[ρ]).
+    { intros HΣ. rewrite <-(subst_var φ). now apply H. }
+    intros ρ. induction 1 as [φ H IH|φ H] in ρ |-*.
     - cbn. invert_bounds.
       intros Hnat. destruct (Hnat (fun _ => 0)) as [d Hd].
       remember intu as Hintu. (* for proof mode *)
@@ -491,7 +600,8 @@ Section Sigma1completeness.
     - intros Hb Hnat.
       destruct (H ρ Hb) as [H1 | H1].
       + easy.
-      + eapply Q_sound_intu with (rho := fun _ => 0) in H1. cbn in H1.
+      + (* note: actually only requires consistency, can also be shown for classical *)
+        eapply Q_sound_intu with (rho := fun _ => 0) in H1. cbn in H1.
         exfalso. apply H1. apply Hnat.
   Qed.
 
@@ -500,7 +610,7 @@ Section Sigma1completeness.
   Proof.
     intros Hb HΣ Hφ. eapply Q_sound_intu with (rho := fun _ => 0) in Hφ as [x Hx].
     exists x. eapply Σ1_completeness.
-    - apply Hb.
+    - now apply Σ1_subst.
     - eapply subst_bound; first eassumption.
       intros [|n] H; last lia. apply num_bound.
     - intros ρ. eapply sat_closed; first last.
