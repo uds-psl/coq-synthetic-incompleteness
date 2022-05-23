@@ -68,9 +68,13 @@ Section fol.
 
   Variable theta : nat -> nat -\ bool.
   Variable theta_univ : is_universal theta.
+  Goal forall X (p : X -> Prop), ex p -> False.
+  Proof.
+    induction 1.  Show Proof.
 
+  (* TODO the current problem is that its not clear whether varphi has x or k inserted first *)
   Hypothesis Hrepr : forall P : nat -> Prop, enumerable P ->
-    exists φ, Qdec φ /\ bounded 2 φ /\ forall x ρ, P x <-> interp_nat; ρ ⊨ ∃φ[(num x)..].
+    exists φ, Qdec φ /\ bounded 2 φ /\ forall x ρ, P x <-> interp_nat; (x.:ρ) ⊨ ∃φ.
 
   Lemma fol_incomplete' : exists φ, ~@tprv _ _ _ p T φ /\ ~@tprv _ _ _ p T (¬φ).
   Proof.
@@ -103,10 +107,40 @@ Section fol.
       + assumption.
       + assumption.
       + assumption.
-      + assumption.
-      + assumption.
+      + intros x ρ. specialize (Hφ1 x ρ).
+        rewrite sat_single_nat in Hφ1. cbn in Hφ1. cbn.
+        admit.
+      + admit.
       + exists (fun x => φ[(num x)..]). intros c. split.
         * intros H. exists Qeq. split; first auto. now apply Hφ.
         * intros H. exists Qeq. split; first auto. now apply Hφ.
   Admitted.
+End fol.
+Section fol.
+  Existing Instance PA_funcs_signature.
+  Existing Instance PA_preds_signature.
+  Hypothesis (p : peirce).
+
+  Variable T : theory.
+  Hypothesis T_Q : list_theory Qeq ⊑ T.
+  Hypothesis Tenum : enumerable T.
+  Hypothesis Tconsis : ~@tprv _ _ _ p T ⊥.
+
+  Variable theta : nat -> nat -\ bool.
+  Variable theta_univ : is_universal theta.
+
+  Hypothesis Hrepr : forall P : nat -> Prop, enumerable P ->
+    exists φ, @Σ1 intu φ /\ bounded 1 φ /\ forall x ρ, P x <-> interp_nat; (x .: ρ) ⊨ φ.
+
+  Lemma fol_incomplete : exists φ, ~@tprv _ _ _ p T φ /\ ~@tprv _ _ _ p T (¬φ).
+  Proof.
+    eapply fol_incomplete'; try eassumption.
+    intros P Penum. destruct (Hrepr Penum) as (ψ & HΣ & Hb & Hc).
+    destruct (Σ1_compression Hb HΣ) as (ψ' & HQ & Hb' & Hc').
+    exists ψ'. do 2 (split; first assumption).
+    intros x ρ.
+    apply Q_sound_intu with (rho := x .: ρ) in Hc'. 
+    rewrite (Hc x ρ). apply Hc'.
+  Qed.
+
 End fol.

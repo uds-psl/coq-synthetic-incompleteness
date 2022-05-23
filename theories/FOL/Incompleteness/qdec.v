@@ -568,7 +568,6 @@ Section Sigma1.
   Lemma Σ1_compression φ n : bounded n φ -> Σ1 φ -> exists ψ, Qdec ψ /\ bounded (S n) ψ /\ Qeq ⊢ φ <~> ∃ψ.
   Proof.
     intros Hb (k & ψ & HΔ & ->)%Σ1_exist_times.
-    Check exists_compression.
     destruct (@exists_compression ψ n k) as (ψ' & HΔ' & Hb' & H').
     all: firstorder using bounded_exist_times.
   Qed.
