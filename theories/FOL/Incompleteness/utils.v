@@ -3,7 +3,7 @@ From Undecidability.Shared Require Import embed_nat Dec.
 Require Import Vector.
 Require Import Undecidability.Shared.Libs.DLW.Vec.vec.
 Require Import ConstructiveEpsilon.
-From Equations Require Import Equations DepElim.
+From Equations Require Import Equations.
 
 Local Set Implicit Arguments.
 Local Unset Strict Implicit.
@@ -43,9 +43,16 @@ Proof.
   - decide (f n = Some x); decide (g n = Some x); firstorder.
 Qed.
 
+Lemma vec_inv1 X (v : vec X 1) :
+    v = Vector.hd v ## vec_nil.
+Proof.
+  repeat depelim v. cbn. reflexivity.
+Qed.
 Lemma vec_1_inv X (v : vec X 1) : {a & v = a ## vec_nil}.
 Proof.
-Admitted.
+  Locate depelim.
+  depelim v. depelim v. eauto.
+Qed.
 Lemma vec_2_inv X (v : vec X 2) : { a & { b & v = a ## b ## vec_nil} }.
 Proof.
 Admitted.
