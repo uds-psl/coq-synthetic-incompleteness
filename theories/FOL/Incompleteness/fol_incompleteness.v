@@ -68,13 +68,10 @@ Section fol.
 
   Variable theta : nat -> nat -\ bool.
   Variable theta_univ : is_universal theta.
-  Goal forall X (p : X -> Prop), ex p -> False.
-  Proof.
-    induction 1.  Show Proof.
 
   (* TODO the current problem is that its not clear whether varphi has x or k inserted first *)
   Hypothesis Hrepr : forall P : nat -> Prop, enumerable P ->
-    exists φ, Qdec φ /\ bounded 2 φ /\ forall x ρ, P x <-> interp_nat; (x.:ρ) ⊨ ∃φ.
+    exists φ, Qdec φ /\ bounded 2 φ /\ forall x ρ, P x <-> interp_nat; ρ ⊨ ∃φ[(num x)..].
 
   Lemma fol_incomplete' : exists φ, ~@tprv _ _ _ p T φ /\ ~@tprv _ _ _ p T (¬φ).
   Proof.
@@ -107,10 +104,8 @@ Section fol.
       + assumption.
       + assumption.
       + assumption.
-      + intros x ρ. specialize (Hφ1 x ρ).
-        rewrite sat_single_nat in Hφ1. cbn in Hφ1. cbn.
-        admit.
-      + admit.
+      + assumption.
+      + assumption.
       + exists (fun x => φ[(num x)..]). intros c. split.
         * intros H. exists Qeq. split; first auto. now apply Hφ.
         * intros H. exists Qeq. split; first auto. now apply Hφ.
@@ -137,10 +132,18 @@ Section fol.
     eapply fol_incomplete'; try eassumption.
     intros P Penum. destruct (Hrepr Penum) as (ψ & HΣ & Hb & Hc).
     destruct (Σ1_compression Hb HΣ) as (ψ' & HQ & Hb' & Hc').
-    exists ψ'. do 2 (split; first assumption).
+    exists ψ'[$1 .: $0 ..]. split; last split.
+    { now apply Qdec_subst. }
+    { eapply subst_bound; first eassumption. intros [|[|n]]; cbn; solve_bounds. }
     intros x ρ.
-    apply Q_sound_intu with (rho := x .: ρ) in Hc'. 
-    rewrite (Hc x ρ). apply Hc'.
+    apply Q_sound_intu with (rho := x .: ρ) in Hc'. cbn in Hc'.
+    rewrite (Hc x ρ). 
+    eassert (Hc'' : _ <-> _) by exact Hc'. rewrite Hc''. cbn.
+    apply utils_tac.exists_equiv. intros k.
+    rewrite !sat_single_nat, !subst_comp. 
+    assert (H : forall phi1 phi2, phi1 = phi2 -> interp_nat; ρ ⊨ phi1 <-> interp_nat; ρ ⊨ phi2) by (now intros ? ? ->); apply H.
+    eapply bounded_subst; first eassumption. 
+    intros [|[|[|n]]]; cbn; rewrite ?num_subst; repeat solve_bounds.
   Qed.
 
 End fol.
