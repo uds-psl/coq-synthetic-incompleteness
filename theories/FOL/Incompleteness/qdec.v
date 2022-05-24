@@ -103,12 +103,21 @@ Section Qdec.
         * apply Vector.In_cons_hd.
         * apply Vector.In_cons_tl, Vector.In_cons_hd.
   Qed.
+  Lemma subst_up φ t1 t2 :
+    φ[up t1..][t2..] = φ[t2`[↑]..][t1..].
+  Proof.
+    rewrite !subst_comp. apply subst_ext. intros [|[|n]]; cbn.
+    + now rewrite subst_term_shift.
+    + now rewrite subst_term_shift.
+    + reflexivity.
+  Qed.
+
   Lemma Q_leibniz φ x y : 
     Qeq ⊢ x == y ~> φ[x..] ~> φ[y..].
   Proof. 
     enough (Qeq ⊢ x == y ~> φ[x..] <~> φ[y..]).
     { fintros. fapply H; ctx. }
-    revert x y. induction φ using form_ind_falsity_on; intros x y.
+    induction φ using form_ind_subst.
     - cbn. fintros. fsplit; fintros; ctx. 
     - destruct P0. cbn in t. 
       destruct (vec_2_inv t) as (a & b & ->).
@@ -121,10 +130,10 @@ Section Qdec.
         fapply H. fapply "H". }
       frewrite "H0". frewrite "H1".
       fsplit; fintros; ctx.
-    - destruct b0; cbn; fstart; fintros.
-      all: fassert (φ1[x..] <~> φ1[y..]) by (fapply IHφ1; fapply "H").
-      all: fassert (φ2[x..] <~> φ2[y..]) by (fapply IHφ2; fapply "H").
-      all: fsplit.
+    - fstart; fintros.
+      fassert (φ1[x..] <~> φ1[y..]) by (fapply IHφ1; fapply "H").
+      fassert (φ2[x..] <~> φ2[y..]) by (fapply IHφ2; fapply "H").
+      destruct b0; fsplit; cbn.
       + fintros "[H2 H3]". fsplit.
         * fapply "H0". ctx.
         * fapply "H1". ctx.
@@ -141,10 +150,18 @@ Section Qdec.
         fapply "H1". fapply "H2". fapply "H0". ctx.
       + fintros "H2" "H3". 
         fapply "H1". fapply "H2". fapply "H0". ctx.
-    - destruct q.
-      + admit.
-      + admit.
-  Admitted.
+    - fstart. fintros. fsplit; destruct q; cbn; fintros.
+      + specialize (H (x0`[↑]..)). rewrite subst_up. fapply H.
+        * ctx.
+        * fspecialize ("H0" x0). rewrite subst_up. ctx.
+      + fdestruct "H0". fexists x0. rewrite !subst_up.
+        specialize (H (x0`[↑]..)). fapply H; ctx.
+      + specialize (H (x0`[↑]..)). rewrite subst_up. fapply H.
+        * ctx.
+        * fspecialize ("H0" x0). rewrite subst_up. ctx.
+      + fdestruct "H0". fexists x0. rewrite !subst_up.
+        specialize (H (x0`[↑]..)). fapply H; ctx.
+  Qed.
 
 
   Lemma add_zero_swap t :
