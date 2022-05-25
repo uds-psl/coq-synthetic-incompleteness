@@ -147,3 +147,49 @@ Section fol.
   Qed.
 
 End fol.
+
+From Undecidability.H10 Require Import DPRM dio_single.
+Section dprm.
+  Existing Instance PA_funcs_signature.
+  Existing Instance PA_preds_signature.
+
+  Variable P : nat -> Prop.
+  Context `{peirc : peirce}.
+
+  Fixpoint fin_to_n k (n : Fin.t k) : nat.
+  Proof.
+    destruct n.
+    - exact 0.
+    - exact (S (fin_to_n _ n0)).
+  Defined.
+  Fixpoint embed n m (p : dio_polynomial (Fin.t n) (Fin.t m)) : term.
+  Proof.
+    Print dio_polynomial.
+    destruct p.
+    - exact (num n0).
+    - exact $(fin_to_n t).
+    - exact $(fin_to_n t + n).
+    - destruct d.
+      + exact (embed _ _ p1 ⊕ embed _ _ p2).
+      + exact (embed _ _ p1 ⊗ embed _ _ p2).
+  Defined.
+  Check eval.
+  Check dp_eval.
+
+  Lemma embed_eval n m (p : dio_polynomial (Fin.t n) (Fin.t m)) : True.
+  Proof. Abort.
+
+
+  Lemma dprm_standard_model : dio_rec_single P -> exists φ, Σ1 φ /\ bounded 1 φ /\ forall x, P x <-> interp_nat ⊨= φ[(num x)..].
+  Proof.
+    unfold dio_rec_single.
+    intros (n & p1 & p2 & H).
+    exists (exist_times n (embed p1 == embed p2)). repeat apply conj.
+    - admit.
+    - admit.
+    - intros x. rewrite H. split.
+      + intros [v Hv].
+
+  
+
+End dprm.
