@@ -275,9 +275,6 @@ FOL/binFST_undec.v
 FOL/Util/Axiomatisations.v
 FOL/Util/Abstract.v
 
-FOL/Incompleteness/FS.v
-FOL/Incompleteness/CT.v
-FOL/Incompleteness/VR.v
 FOL/Incompleteness/utils.v
 FOL/Incompleteness/formal_systems.v
 FOL/Incompleteness/churchs_thesis.v

@@ -163,9 +163,9 @@ Global Ltac invert_bounds :=
 Section n.
   Existing Instance PA_preds_signature.
   Existing Instance PA_funcs_signature.
-  Existing Instance intu.
+  Context `{pei : peirce}.
 
-  Lemma closed_term_is_num s : bounded_t 0 s -> { n & Qeq ⊢I s == num n }.
+  Lemma closed_term_is_num s : bounded_t 0 s -> { n & Qeq ⊢ s == num n }.
   Proof.
     intros H. 
     induction s using term_rect. 2: destruct F.

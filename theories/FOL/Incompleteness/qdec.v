@@ -64,6 +64,27 @@ Section Qdec.
     - left. fintros. fapply H1.
     - left. fintros. fexfalso. fapply H0. ctx.
   Qed.
+  Lemma Qdec_eq t s : Qdec (t == s).
+  Proof.
+    intros ρ. cbn. invert_bounds. 
+    Check closed_term_is_num.
+    destruct (@closed_term_is_num _ t`[ρ]) as [k1 Hk1].
+    { apply H3. left. }
+    destruct (@closed_term_is_num _ s`[ρ]) as [k2 Hk2].
+    { apply H3. right. left. }
+    assert (k1 = k2 \/ k1 <> k2) as [->|Hk] by lia; [left|right].
+    all: frewrite Hk1; frewrite Hk2.
+    - fapply ax_refl.
+    - clear Hk1. clear Hk2. revert Hk. induction k1 in k2 |-*; intros Hk.
+      + destruct k2; first congruence. cbn.
+        fapply ax_zero_succ.
+      + cbn. destruct k2.
+        * fintros. fapply (ax_zero_succ (num k1)). fapply ax_sym. ctx.
+        * cbn. fintros. assert (H' : k1 <> k2) by congruence.
+          specialize (IHk1 k2 H'). fapply IHk1.
+          fapply ax_succ_inj. ctx.
+  Qed.
+
 
 
   Lemma form_ind_falsity_on :
@@ -448,6 +469,15 @@ Section Sigma1.
     - cbn. constructor. apply IH.
     - constructor. apply Qdec_subst, H.
   Qed.
+
+  Lemma exist_times_Σ1 n φ :
+    Σ1 φ -> Σ1 (exist_times n φ).
+  Proof.
+    intros H. induction n.
+    - easy.
+    - now constructor.
+  Qed.
+
 
   Lemma exists_compression_2 φ n : Qdec φ -> bounded (S (S n)) φ -> exists ψ, Qdec ψ /\ bounded (S n) ψ /\ Qeq ⊢ (∃∃φ) <~> (∃ψ).
   Proof.

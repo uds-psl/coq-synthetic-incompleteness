@@ -7,7 +7,7 @@ From Undecidability.FOL.Proofmode Require Import Theories ProofMode Hoas.
 From Undecidability.FOL.Incompleteness Require Import formal_systems abstract_incompleteness fol qdec repr utils churchs_thesis.
 
 
-From Equations Require Import Equations DepElim.
+From Equations Require Import Equations.
 Require Import String List.
 
 
@@ -152,6 +152,7 @@ From Undecidability.H10 Require Import DPRM dio_single.
 Section dprm.
   Existing Instance PA_funcs_signature.
   Existing Instance PA_preds_signature.
+  Existing Instance interp_nat.
 
   Variable P : nat -> Prop.
   Context `{peirc : peirce}.
@@ -162,34 +163,88 @@ Section dprm.
     - exact 0.
     - exact (S (fin_to_n _ n0)).
   Defined.
-  Fixpoint embed n m (p : dio_polynomial (Fin.t n) (Fin.t m)) : term.
+  Lemma fin_to_n_bound k (n : Fin.t k) :
+    fin_to_n n <= k.
   Proof.
-    Print dio_polynomial.
+    induction n; cbn; lia.
+  Qed.
+  Fixpoint embed_poly n (p : dio_polynomial (Fin.t n) (Fin.t 1)) : term.
+  Proof.
     destruct p.
     - exact (num n0).
     - exact $(fin_to_n t).
-    - exact $(fin_to_n t + n).
+    - exact $n.
     - destruct d.
-      + exact (embed _ _ p1 ⊕ embed _ _ p2).
-      + exact (embed _ _ p1 ⊗ embed _ _ p2).
+      + exact (embed_poly _ p1 ⊕ embed_poly _ p2).
+      + exact (embed_poly _ p1 ⊗ embed_poly _ p2).
   Defined.
-  Check eval.
-  Check dp_eval.
+  Lemma embed_poly_bound n (p : dio_polynomial (Fin.t n) (Fin.t 1)) :
+    bounded_t (S n) (embed_poly p).
+  Proof.
+    induction p; cbn.
+    - apply num_bound.
+    - constructor. pose proof (fin_to_n_bound v). lia.
+    - solve_bounds.
+    - destruct d; now solve_bounds.
+  Qed.
 
-  Lemma embed_eval n m (p : dio_polynomial (Fin.t n) (Fin.t m)) : True.
-  Proof. Abort.
+  Fixpoint vec_pos_default {X : Type} {n : nat} (v : Vector.t X n) (p : nat) (d : nat -> X) : X
+    := match v with
+       | Vector.nil => d p
+       | Vector.cons _ x n' v' => match p with 
+                                  | 0 => x
+                                  | S p' => vec_pos_default v' p' d
+                                  end
+       end.
+  Lemma vec_pos_default_fin {X : Type} {n : nat} (v : Vector.t X n) (f : Fin.t n) (d : nat -> X) :
+    vec.vec_pos v f = vec_pos_default v (fin_to_n f) d.
+  Proof.
+    induction f; depelim v; now cbn.
+  Qed.
+  Lemma vec_pos_default_default {X : Type} {n : nat} (v : Vector.t X n) (m : nat) (d : nat -> X) :
+    d m = vec_pos_default v (m + n) d.
+  Proof.
+    induction v; cbn.
+    - f_equal. lia.
+    - now replace (m + S n) with (S m + n) by lia.
+  Qed.
 
+  Lemma embed_eval n (p : dio_polynomial (Fin.t n) (Fin.t 1)) : 
+    forall x ρ (v : Vector.t nat n), 
+      dp_eval (vec.vec_pos v) (fun _ => x) p = eval (fun k => vec_pos_default v k (x .: ρ)) (embed_poly p).
+  Proof. 
+    intros x ρ. induction p; intros w; cbn.
+    - now rewrite nat_eval_num.
+    - apply vec_pos_default_fin.
+    - change n with (0 + n).
+      now rewrite <-vec_pos_default_default with (m := 0).
+    - destruct d; cbn; now rewrite IHp1, IHp2.
+  Qed.
 
-  Lemma dprm_standard_model : dio_rec_single P -> exists φ, Σ1 φ /\ bounded 1 φ /\ forall x, P x <-> interp_nat ⊨= φ[(num x)..].
+  Lemma sat_exist_times n ρ φ : interp_nat; ρ ⊨ exist_times n φ <-> exists w : Vector.t nat n, interp_nat; (fun k => vec_pos_default w k ρ) ⊨ φ.
+  Proof.
+    induction n in ρ |-*; cbn.
+    - split.
+      + intros H. now exists Vector.nil.
+      + intros [v H]. now depelim v. 
+    - split.
+      + intros [k Hk].
+      + intros [w Hw]. depelim w. exists h, w. cbn in Hw.
+  Admitted.
+
+  Lemma dprm_standard_model : dio_rec_single P -> exists φ, Σ1 φ /\ bounded 1 φ /\ forall x ρ, P x <-> interp_nat; (x .: ρ) ⊨ φ.
   Proof.
     unfold dio_rec_single.
     intros (n & p1 & p2 & H).
-    exists (exist_times n (embed p1 == embed p2)). repeat apply conj.
-    - admit.
-    - admit.
-    - intros x. rewrite H. split.
-      + intros [v Hv].
-
+    exists (exist_times n (embed_poly p1 == embed_poly p2)). repeat apply conj.
+    - apply exist_times_Σ1. constructor. apply Qdec_eq.
+    - apply bounded_exist_times. 
+      all: replace (n + 1) with (S n) by lia.
+      solve_bounds; apply embed_poly_bound.
+    - intros x ρ. rewrite H. clear H. 
+      setoid_rewrite sat_exist_times. 
+      setoid_rewrite embed_eval. cbn. reflexivity.
+  Qed.
   
 
 End dprm.
