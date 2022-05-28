@@ -188,21 +188,21 @@ Section dprm.
     - destruct d; now solve_bounds.
   Qed.
 
-  Fixpoint vec_pos_default {X : Type} {n : nat} (v : Vector.t X n) (p : nat) (d : nat -> X) : X
+  Fixpoint vec_pos_default {X : Type} {n : nat} (v : Vector.t X n) (d : nat -> X) k : X
     := match v with
-       | Vector.nil => d p
-       | Vector.cons _ x n' v' => match p with 
+       | Vector.nil => d k
+       | Vector.cons _ x n' v' => match k with 
                                   | 0 => x
-                                  | S p' => vec_pos_default v' p' d
+                                  | S k' => vec_pos_default v' d k'
                                   end
        end.
   Lemma vec_pos_default_fin {X : Type} {n : nat} (v : Vector.t X n) (f : Fin.t n) (d : nat -> X) :
-    vec.vec_pos v f = vec_pos_default v (fin_to_n f) d.
+    vec.vec_pos v f = vec_pos_default v d (fin_to_n f).
   Proof.
     induction f; depelim v; now cbn.
   Qed.
   Lemma vec_pos_default_default {X : Type} {n : nat} (v : Vector.t X n) (m : nat) (d : nat -> X) :
-    d m = vec_pos_default v (m + n) d.
+    d m = vec_pos_default v d (m + n).
   Proof.
     induction v; cbn.
     - f_equal. lia.
@@ -211,7 +211,7 @@ Section dprm.
 
   Lemma embed_eval n (p : dio_polynomial (Fin.t n) (Fin.t 1)) : 
     forall x ρ (v : Vector.t nat n), 
-      dp_eval (vec.vec_pos v) (fun _ => x) p = eval (fun k => vec_pos_default v k (x .: ρ)) (embed_poly p).
+      dp_eval (vec.vec_pos v) (fun _ => x) p = eval (vec_pos_default v (x .: ρ)) (embed_poly p).
   Proof. 
     intros x ρ. induction p; intros w; cbn.
     - now rewrite nat_eval_num.
@@ -221,16 +221,40 @@ Section dprm.
     - destruct d; cbn; now rewrite IHp1, IHp2.
   Qed.
 
-  Lemma sat_exist_times n ρ φ : interp_nat; ρ ⊨ exist_times n φ <-> exists w : Vector.t nat n, interp_nat; (fun k => vec_pos_default w k ρ) ⊨ φ.
+  Lemma vec_pos_default_append n m (v : Vector.t nat n) (w : Vector.t nat m) d k :
+    vec_pos_default (Vector.append v w) d k = vec_pos_default v (vec_pos_default w d) k.
   Proof.
-    induction n in ρ |-*; cbn.
+    induction v in k |-*; first reflexivity.
+    cbn. now destruct k.
+  Qed.
+  Lemma vec_append1 n (v : Vector.t nat (n+1)) :
+    exists k w, v = Vector.append w (Vector.cons k Vector.nil).
+  Proof.
+    induction n as [|n IHn].
+    - do 2 depelim v. now exists h, Vector.nil.
+    - cbn in v. depelim v. destruct (IHn v) as (k & w & ->). 
+      now exists k, (Vector.cons h w). 
+  Qed.
+
+  Lemma sat_exist_times n ρ φ : interp_nat; ρ ⊨ exist_times n φ <-> exists w : Vector.t nat n, interp_nat; (vec_pos_default w ρ) ⊨ φ.
+  Proof.
+    induction n as [|n IHn] in ρ |-*; cbn.
     - split.
       + intros H. now exists Vector.nil.
       + intros [v H]. now depelim v. 
-    - split.
-      + intros [k Hk].
-      + intros [w Hw]. depelim w. exists h, w. cbn in Hw.
-  Admitted.
+    - setoid_rewrite IHn. split. 
+      + intros (k & w & Hw). replace (S n) with (n + 1) by lia.
+        exists (Vector.append w (Vector.cons k Vector.nil)).
+        eapply sat_ext; first apply vec_pos_default_append.
+        assumption.
+      + replace (S n) with (n+1) by lia.
+        intros [w Hw]. 
+        destruct (vec_append1 w) as (h & w' & ->).
+        exists h, w'.
+        eapply sat_ext in Hw.
+        2: { intros x. symmetry. apply vec_pos_default_append. }
+        easy.
+  Qed.
 
   Lemma dprm_standard_model : dio_rec_single P -> exists φ, Σ1 φ /\ bounded 1 φ /\ forall x ρ, P x <-> interp_nat; (x .: ρ) ⊨ φ.
   Proof.
