@@ -8,7 +8,7 @@ From Undecidability.FOL Require Import PA.
 
 Require Import Undecidability.Shared.Libs.DLW.Vec.vec.
 
-From Equations Require Import Equations DepElim.
+From Equations Require Import Equations.
 From Undecidability.FOL.Proofmode Require Import Theories ProofMode Hoas.
 Require Import String.
 Open Scope string_scope.
@@ -48,7 +48,16 @@ Section lemmas.
   Admitted. (* by Marc *)
   Lemma up_invert_bound_t n t :
     bounded_t (S n) t`[↑] -> bounded_t n t.
-  Proof. Admitted.
+  Proof. 
+    induction t.
+    - unfold "↑". cbn. inversion 1. constructor. lia.
+    - cbn. inversion 1.
+      constructor. intros t Ht.
+      apply IH; first assumption.
+      apply H1.
+      apply Eqdep_dec.inj_pair2_eq_dec in H2; try decide equality. subst.
+      now apply Vectors.vect_in_map.
+  Qed.
 
 
 
