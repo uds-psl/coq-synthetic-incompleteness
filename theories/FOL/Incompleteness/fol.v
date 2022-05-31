@@ -24,6 +24,7 @@ Section lemmas.
   Existing Instance PA_funcs_signature.
   Existing Instance interp_nat.
 
+
   Lemma num_subst x ρ : (num x)`[ρ] = num x.
   Proof.
     induction x; cbn; congruence.
@@ -37,10 +38,19 @@ Section lemmas.
       assumption.
    Qed.
 
-  Lemma subst_bound psi : (* TODO move to util *)
+  Lemma subst_bound_t t :
+      forall sigma N B, bounded_t N t -> (forall n, n < N -> bounded_t B (sigma n) ) -> bounded_t B (t`[sigma]).
+  Proof. 
+  Admitted. (* by Marc *)
+  Lemma subst_bound psi :
       forall sigma N B, bounded N psi -> (forall n, n < N -> bounded_t B (sigma n) ) -> bounded B (psi[sigma]).
   Proof. 
   Admitted. (* by Marc *)
+  Lemma up_invert_bound_t n t :
+    bounded_t (S n) t`[↑] -> bounded_t n t.
+  Proof. Admitted.
+
+
 
   Lemma Q_sound_class φ : (forall P, P \/ ~P) -> Qeq ⊢C φ -> interp_nat ⊨= φ.
   Proof.
@@ -99,6 +109,24 @@ Section syntax.
     - rewrite !subst_term_comp. reflexivity. 
     - do 3 f_equal. rewrite !subst_term_comp. reflexivity. 
   Qed.
+
+  Lemma pless_invert_bound n x y : bounded n (pless x y) -> bounded_t n x /\ bounded_t n y.
+  Proof.
+    unfold pless. intros Hb.
+    inversion Hb. subst.
+    apply Eqdep_dec.inj_pair2_eq_dec in H3; try decide equality. subst.
+    inversion H2. subst.
+    apply Eqdep_dec.inj_pair2_eq_dec in H4; try decide equality. subst.
+    split.
+    - assert (bounded_t (S n) (x`[↑] ⊕ $0)) as H by (apply H3; right; left).
+      inversion H. subst.
+      apply Eqdep_dec.inj_pair2_eq_dec in H4; try decide equality. subst.
+      apply up_invert_bound_t. apply H1. left.
+    - apply up_invert_bound_t. apply H3. left.
+  Qed.
+
+
+
   (* TODO add *)
   Global Opaque pless.
   (* Global Opaque pless_swap.*)
@@ -202,4 +230,5 @@ Section n.
         fapply ax_mult_congr; assumption.
   Qed.
   
+
 End n.

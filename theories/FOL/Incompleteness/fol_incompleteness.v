@@ -69,7 +69,6 @@ Section fol.
   Variable theta : nat -> nat -\ bool.
   Variable theta_univ : is_universal theta.
 
-  (* TODO the current problem is that its not clear whether varphi has x or k inserted first *)
   Hypothesis Hrepr : forall P : nat -> Prop, enumerable P ->
     exists φ, Qdec φ /\ bounded 2 φ /\ forall x ρ, P x <-> interp_nat; ρ ⊨ ∃φ[(num x)..].
 
@@ -104,8 +103,8 @@ Section fol.
       + assumption.
       + assumption.
       + assumption.
-      + assumption.
-      + assumption.
+      + admit.
+      + admit.
       + exists (fun x => φ[(num x)..]). intros c. split.
         * intros H. exists Qeq. split; first auto. now apply Hφ.
         * intros H. exists Qeq. split; first auto. now apply Hφ.
@@ -256,7 +255,7 @@ Section dprm.
         easy.
   Qed.
 
-  Lemma dprm_standard_model : dio_rec_single P -> exists φ, Σ1 φ /\ bounded 1 φ /\ forall x ρ, P x <-> interp_nat; (x .: ρ) ⊨ φ.
+  Lemma dprm_definable : dio_rec_single P -> exists φ, Σ1 φ /\ bounded 1 φ /\ forall x ρ, P x <-> interp_nat; (x .: ρ) ⊨ φ.
   Proof.
     unfold dio_rec_single.
     intros (n & p1 & p2 & H).
@@ -268,6 +267,12 @@ Section dprm.
     - intros x ρ. rewrite H. clear H. 
       setoid_rewrite sat_exist_times. 
       setoid_rewrite embed_eval. cbn. reflexivity.
+  Qed.
+
+  Check mu_recursive.
+  Lemma mu_recursive_definable : mu_recursive P -> exists φ, Σ1 φ /\ bounded 1 φ /\ forall x ρ, P x <-> interp_nat; (x .: ρ) ⊨ φ.
+  Proof.
+    intros H. apply dprm_definable. now do 3 apply DPRM_1.
   Qed.
   
 

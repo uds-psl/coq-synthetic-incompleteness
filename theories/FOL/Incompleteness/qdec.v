@@ -6,7 +6,7 @@ From Undecidability.Shared Require Import Dec embed_nat.
 From Undecidability.FOL.Util Require Import Syntax_facts FullDeduction FullDeduction_facts FullTarski FullTarski_facts Axiomatisations FA_facts Syntax.
 From Undecidability.FOL Require Import PA.
 
-From Equations Require Import Equations DepElim.
+From Equations Require Import Equations.
 From Undecidability.FOL.Proofmode Require Import Theories ProofMode Hoas.
 From Undecidability.FOL.Incompleteness Require Import fol.
 
@@ -220,9 +220,35 @@ Section Qdec.
   Lemma add_rec_swap t :
     Qeq ⊢ ∀ ∀ $0 ⊕ σ $ 1 == σ num t ~> $0 ⊕ $1 == num t.
   Proof. 
-
-  Admitted.
-
+    induction t; fstart; fintros y x "H".
+    - fassert ax_cases as "C"; first ctx.
+      fdestruct ("C" x) as "[Hx|[x' Hx']]".
+      + frewrite "Hx". frewrite (ax_add_zero y).
+        fapply ax_succ_inj. frewrite <-(ax_add_zero (σ y)).
+        frewrite <-"H". frewrite "Hx". fapply ax_refl.
+      + frewrite "Hx'". fassert ax_cases as "C"; first ctx.
+        fdestruct ("C" x') as "[Hx''|[x'' Hx'']]".
+        * fexfalso. fapply (ax_zero_succ y). 
+          fapply ax_succ_inj. frewrite <-"H".
+          frewrite "Hx'". frewrite "Hx''".
+          frewrite (ax_add_rec (σ y) zero). frewrite (ax_add_zero (σ y)).
+          fapply ax_refl.
+        * fexfalso. fapply (ax_zero_succ (x'' ⊕ σ y)). 
+          fapply ax_succ_inj. frewrite <-"H".
+          frewrite "Hx'". frewrite "Hx''".
+          frewrite (ax_add_rec (σ y) (σ x'')).
+          frewrite (ax_add_rec (σ y) x''). fapply ax_refl.
+    - fassert ax_cases as "C"; first ctx.
+      fdestruct ("C" x) as "[Hx'|[x' Hx']]".
+      + fapply ax_succ_inj. frewrite <-"H".
+        frewrite "Hx'". frewrite (ax_add_zero y).
+        frewrite (ax_add_zero (σ y)). fapply ax_refl.
+      + frewrite "Hx'". frewrite (ax_add_rec y x').
+        fapply ax_succ_congr. fspecialize (IHt y x').
+        rewrite !num_subst in IHt. fapply IHt.
+        fapply ax_succ_inj. frewrite <-(ax_add_rec (σ y) x').
+        frewrite <-"Hx'". ctx.
+  Qed.
 
   Lemma pless_zero_eq : Qeq ⊢ ∀ ($0 ⧀= zero) ~> $0 == zero.
   Proof.
@@ -238,31 +264,40 @@ Section Qdec.
       frewrite <- (ax_add_rec x0 x1). frewrite <- "H0".
       fapply "H".
   Qed.
+  Lemma add_rec_swap2 t :
+    Qeq ⊢ ∀∀ $0 ⊕ $1 == num t ~> $0 ⊕ (σ $1) == num (S t).
+  Proof.
+    induction t; fstart; fintros z x "H".
+    - fassert ax_cases as "C"; first ctx. 
+      fdestruct ("C" x) as "[Hx'|[x' Hx']]".
+      + frewrite <-"H". frewrite "Hx'". 
+        frewrite (ax_add_zero (σ z)). frewrite (ax_add_zero z).
+        fapply ax_refl.
+      + fexfalso. fapply (ax_zero_succ (x' ⊕ z)). frewrite <-"H".
+        frewrite "Hx'". frewrite (ax_add_rec z x'). fapply ax_refl.
+    - fassert ax_cases as "C"; first ctx. 
+      fdestruct ("C" x) as "[Hx'|[x' Hx']]".
+      + frewrite <-"H". frewrite "Hx'".
+        frewrite (ax_add_zero (σ z)). frewrite (ax_add_zero z).
+        fapply ax_refl.
+      + frewrite "Hx'". frewrite (ax_add_rec (σ z) x').
+        fapply ax_succ_congr.
+        fspecialize (IHt z x'). rewrite !num_subst in IHt.
+        fapply IHt. fapply ax_succ_inj.
+        frewrite <-(ax_add_rec z x'). frewrite <-"Hx'".
+        fapply "H".
+  Qed.
+
+
+
   Lemma pless_succ t : Qeq ⊢ ∀ ($0 ⧀= num t) ~> ($0 ⧀= σ (num t)).
   Proof. 
-    induction t; fstart; fintros.
-    - fassert (x == zero).
-      { fapply pless_zero_eq. ctx. }
-      rewrite !pless_eq. cbn. fexists (σ zero). frewrite "H0".
-      fapply ax_sym. fapply ax_add_zero.
-    - fassert (ax_cases); first ctx.
-      fdestruct "H".
-      fdestruct ("H0" x).
-      + rewrite !pless_eq. fexists (σ (σ num t)). fstart. (*?*)
-        frewrite "H0". frewrite (ax_add_zero (σ (σ num t))). fapply ax_refl.
-      + fdestruct "H0". rewrite !pless_eq. fdestruct "H".
-        fexists x1.
-    (* induction t. *)
-    (* - intros x y. destruct x as [|x']. *)
-    (*   + cbn. injection 1.  easy. *)
-    (*   + cbn. destruct x' as [|x'']. *)
-    (*     * cbn. discriminate. *)
-    (*     * cbn. discriminate. *)
-    (* - intros x y. destruct x as [|x']. *)
-    (*   + cbn. injection 1. easy. *)
-    (*   + cbn. injection 1. intros. f_equal. apply IHt. *)
-    (*     apply H0. *)
-  Admitted.
+    rewrite !pless_eq, !num_subst.
+    fstart. fintros x "[z Hz]". fexists (σ z).
+    pose proof (add_rec_swap2 t) as Hars.
+    fspecialize (Hars z x). rewrite !num_subst in Hars.
+    fapply ax_sym. fapply Hars. fapply ax_sym. fapply "Hz".
+  Qed.
   Lemma pless_sym t : Qeq ⊢ num t ⧀= num t.
   Proof.
     rewrite !pless_eq.
@@ -396,6 +431,11 @@ Section Qdec.
           fsplit; last ctx.
           pose proof (pless_sym (S t)). cbn in H. fapply H.
   Qed.
+
+  Lemma bounded_exist_comm_disj φ t :
+    Qeq ⊢ (∃ ($0 ⧀=comm (num t)) ∧ φ) <~> fin_disj t φ.
+  Proof.
+  Admitted.
   Lemma Qdec_fin_conj φ t :
     Qdec φ -> Qdec (fin_conj t φ).
   Proof.
@@ -429,6 +469,14 @@ Section Qdec.
   Lemma Qdec_bounded_forall t φ :
     Qdec φ -> Qdec (∀ $0 ⧀= t`[↑] ~> φ).
   Proof.
+    intros HQdec ρ Hb.
+    assert (bounded_t 0 t) as Hbt.
+    { cbn in Hb. 
+      inversion Hb. subst.
+      apply Eqdep_dec.inj_pair2_eq_dec in H3; try decide equality. subst.
+
+
+    Check closed_term_is_num.
   Admitted.
   Lemma Qdec_bounded_exists t φ :
     Qdec φ -> Qdec (∃ ($0 ⧀= t`[↑]) ∧ φ).
@@ -626,11 +674,14 @@ Section Sigma1completeness.
   Existing Instance intu.
 
   (* substitution here as its needed for the induction *)
-  Lemma Σ1_completeness φ : Σ1 φ -> bounded 0 φ -> interp_nat ⊨= φ -> Qeq ⊢ φ.
+  Lemma Σ1_completeness φ ρ : Σ1 φ -> bounded 0 φ -> interp_nat; ρ ⊨ φ -> Qeq ⊢ φ.
   Proof.
     enough (forall ρ, Σ1 φ -> bounded 0 φ[ρ] -> interp_nat ⊨= φ[ρ] -> Qeq ⊢ φ[ρ]).
-    { intros HΣ. rewrite <-(subst_var φ). now apply H. }
-    intros ρ. induction 1 as [φ H IH|φ H] in ρ |-*.
+    { intros HΣ Hb Hsat. rewrite <-subst_var. apply H.
+      - easy.
+      - now rewrite subst_var.
+      - intros ρ'. rewrite subst_var. eapply sat_closed; eassumption. }
+    clear ρ. intros ρ. induction 1 as [φ H IH|φ H] in ρ |-*.
     - cbn. invert_bounds.
       intros Hnat. destruct (Hnat (fun _ => 0)) as [d Hd].
       remember intu as Hintu. (* for proof mode *)
@@ -638,7 +689,7 @@ Section Sigma1completeness.
       + rewrite <-subst_comp. eapply subst_bound.
         * apply H4.
         * intros [|n] Hn; last lia. apply num_bound.
-      + rewrite <-subst_comp. intros ρ'.
+      + intros ρ'. rewrite <-subst_comp.
         rewrite sat_single_nat in Hd.
         eapply sat_closed; last apply Hd.
         eapply subst_bound; first apply H4. 
@@ -655,11 +706,11 @@ Section Sigma1completeness.
   Lemma Σ1_witness φ : Σ1 φ -> bounded 1 φ -> Qeq ⊢ ∃φ -> exists x, Qeq ⊢ φ[(num x)..].
   Proof.
     intros Hb HΣ Hφ. eapply Q_sound_intu with (rho := fun _ => 0) in Hφ as [x Hx].
-    exists x. eapply Σ1_completeness.
+    exists x. eapply Σ1_completeness with (ρ := fun _ => 0).
     - now apply Σ1_subst.
     - eapply subst_bound; first eassumption.
       intros [|n] H; last lia. apply num_bound.
-    - intros ρ. eapply sat_closed; first last.
+    - eapply sat_closed; first last.
       + rewrite <-sat_single_nat. apply Hx.
       + eapply subst_bound; first eassumption.
         intros [|n] H; last lia. apply num_bound.

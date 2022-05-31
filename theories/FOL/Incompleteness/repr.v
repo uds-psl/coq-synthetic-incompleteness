@@ -51,10 +51,32 @@ Section value_disjoint.
   Variable φ1 φ2 : form.
   Hypothesis (φ1_bounded : bounded 2 φ1) (φ2_bounded : bounded 2 φ2).
   Hypothesis (φ1_qdec : Qdec φ1) (φ2_qdec : Qdec φ2).
-  Hypothesis (φ1_sem : forall x ρ, P1 x <-> interp_nat; ρ ⊨ ∃ φ1[(num x) ..])
-             (φ2_sem : forall x ρ, P2 x <-> interp_nat; ρ ⊨ ∃ φ2[(num x) ..]).
+  Hypothesis (φ1_syn : forall x, P1 x <-> Qeq ⊢ ∃ φ1[(num x) ..])
+             (φ2_syn : forall x, P2 x <-> Qeq ⊢ ∃ φ2[(num x) ..]).
 
-
+  Local Lemma φ1_sem x ρ : P1 x <-> interp_nat; ρ ⊨ ∃ φ1[(num x) ..].
+  Proof.
+    rewrite φ1_syn.
+    split.
+    - intros H%soundness. apply H, nat_is_Q_model.
+    - apply Σ1_completeness.
+      + do 2 constructor. now apply Qdec_subst.
+      + solve_bounds. eapply subst_bound; first eassumption.
+        intros [|[|n]] H; cbn. 2-3: solve_bounds.
+        apply num_bound.
+  Qed.
+  Local Lemma φ2_sem x ρ : P2 x <-> interp_nat; ρ ⊨ ∃ φ2[(num x) ..].
+  Proof.
+    rewrite φ2_syn.
+    split.
+    - intros H%soundness. apply H, nat_is_Q_model.
+    - apply Σ1_completeness.
+      + do 2 constructor. now apply Qdec_subst.
+      + solve_bounds. eapply subst_bound; first eassumption.
+        intros [|[|n]] H; cbn. 2-3: solve_bounds.
+        apply num_bound.
+  Qed.
+        
   Definition φ1' := φ1 ∧ ∀ $0 ⧀= $2 ~> φ2[$1 .: $0 ..] ~> ⊥.
   Definition φ2' := φ2 ∧ ∀ $0 ⧀= $2 ~> φ1[$1 .: $0 ..] ~> ⊥.
 
@@ -93,16 +115,16 @@ Section value_disjoint.
 
   Local Lemma DR1 x : P1 x -> Qeq ⊢ ∃ φ1'[(num x)..].
   Proof.
-    intros HP1. apply Σ1_completeness. 
+    intros HP1. eapply Σ1_completeness with (ρ := fun _ => 0).
     { constructor. apply Σ1_subst. constructor. apply φ1'_qdec. }
     { constructor. eapply subst_bound; first apply φ1'_bounded.
       intros [|[|n]] H; try solve_bounds. apply num_bound. }
-    intros ρ. pose proof HP1 as H. rewrite (φ1_sem _ ρ) in H.
+    pose proof HP1 as H. erewrite (φ1_sem _ _) in H.
     destruct H as [k Hk]. exists k.
-    split; first assumption.
+    split; first eassumption.
     cbn. intros k' _ Hk'. apply (@P_disjoint x).
     - eapply φ1_sem. exists k. apply Hk.
-    - eapply φ2_sem with (ρ := k .: ρ). exists k'.
+    - eapply φ2_sem with (ρ := k .: (fun _ => 0)). exists k'.
       rewrite subst_comp in Hk'.
       erewrite bounded_subst. 1-2: eassumption.
       intros [|[|n]] H; cbn.
@@ -110,8 +132,25 @@ Section value_disjoint.
       + easy.
       + lia.
   Qed.
-  Local Lemma DR1' x : P2 x -> interp_nat ⊨= ∃ φ2'[(num x)..].
-  Proof. Admitted.
+  Local Lemma DR1' x : P2 x -> Qeq ⊢ ∃ φ2'[(num x)..].
+  Proof. 
+    intros HP1. eapply Σ1_completeness with (ρ := fun _ => 0).
+    { constructor. apply Σ1_subst. constructor. apply φ2'_qdec. }
+    { constructor. eapply subst_bound; first apply φ2'_bounded.
+      intros [|[|n]] H; try solve_bounds. apply num_bound. }
+    pose proof HP1 as H. erewrite (φ2_sem _ _) in H.
+    destruct H as [k Hk]. exists k.
+    split; first eassumption.
+    cbn. intros k' _ Hk'. apply (@P_disjoint x).
+    - eapply φ1_sem with (ρ := k .: (fun _ => 0)). exists k'.
+      rewrite subst_comp in Hk'.
+      erewrite bounded_subst. 1-2: eassumption.
+      intros [|[|n]] H; cbn.
+      + now rewrite num_subst.
+      + easy.
+      + lia.
+    - eapply φ2_sem. exists k. apply Hk.
+  Qed.
   Local Lemma DR2 x : P2 x -> Qeq ⊢ ¬∃ φ1'[(num x)..].
   Proof. 
     cbn. intros HP2. 
@@ -120,11 +159,12 @@ Section value_disjoint.
       - constructor. apply Qdec_subst. apply φ2'_qdec.
       - eapply subst_bound; first apply φ2'_bounded.
         intros [|[|n]] H; try solve_bounds. apply num_bound.
-      - apply Σ1_completeness.
+      - apply Σ1_completeness with (ρ := id).
         + constructor. apply Σ1_subst. constructor. apply φ2'_qdec.
         + constructor. eapply subst_bound; first apply φ2'_bounded.
           intros [|[|n]] H; try solve_bounds. apply num_bound.
-        + apply DR1', HP2. }
+        + apply DR1', soundness in HP2. apply HP2.
+          apply nat_is_Q_model. }
     cbn in Hk. 
 
     custom_simpl. unfold "↑". fstart.
@@ -156,8 +196,21 @@ Section value_disjoint.
     (forall x, P1 x -> Qeq ⊢ φ[(num x)..]) /\
     (forall x, P2 x -> Qeq ⊢ ¬φ[(num x)..]).
   Proof.
-    admit.
-  Admitted.
+    exists (∃ φ1'[$1 .: $0 ..]). repeat apply conj.
+    { do 2 constructor. apply Qdec_subst, φ1'_qdec. }
+    - intros x H%DR1. 
+      replace ((_)[_]) with (∃ φ1'[(num x)..]); first assumption.
+      change (∃ _)[_] with (∃ φ1'[$1 .: $0 ..][up (num x)..]).
+      f_equal. rewrite subst_comp. eapply bounded_subst; first apply φ1'_bounded.
+      intros [|[|n]] Hn; cbn. 2-3:solve_bounds.
+      now rewrite num_subst.
+    - intros x H%DR2.
+      replace ((_)[_]) with (∃ φ1'[(num x)..]); first assumption.
+      change (∃ _)[_] with (∃ φ1'[$1 .: $0 ..][up (num x)..]).
+      f_equal. rewrite subst_comp. eapply bounded_subst; first apply φ1'_bounded.
+      intros [|[|n]] Hn; cbn. 2-3:solve_bounds.
+      now rewrite num_subst.
+  Qed.
 
 
 End value_disjoint.
