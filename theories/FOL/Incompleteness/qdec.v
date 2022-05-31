@@ -67,7 +67,6 @@ Section Qdec.
   Lemma Qdec_eq t s : Qdec (t == s).
   Proof.
     intros ρ. cbn. invert_bounds. 
-    Check closed_term_is_num.
     destruct (@closed_term_is_num _ t`[ρ]) as [k1 Hk1].
     { apply H3. left. }
     destruct (@closed_term_is_num _ s`[ρ]) as [k2 Hk2].
@@ -264,6 +263,20 @@ Section Qdec.
       frewrite <- (ax_add_rec x0 x1). frewrite <- "H0".
       fapply "H".
   Qed.
+  Lemma pless_swap_zero_eq : Qeq ⊢ ∀ ($0 ⧀=comm zero) ~> $0 == zero.
+  Proof.
+    rewrite !pless_swap_eq. 
+    fstart. fintros. fdestruct "H".
+    fassert ax_cases as "C"; first ctx.
+    fdestruct ("C" x0) as "[Hx'|[x' Hx']]".
+    - frewrite <-(ax_add_zero x). frewrite <-"Hx'".
+      frewrite <-"H". frewrite "Hx'". fapply ax_refl.
+    - fexfalso. fapply (ax_zero_succ (x' ⊕ x)).
+      frewrite <-(ax_add_rec x x'). frewrite <-"Hx'".
+      fapply "H".
+  Qed.
+
+
   Lemma add_rec_swap2 t :
     Qeq ⊢ ∀∀ $0 ⊕ $1 == num t ~> $0 ⊕ (σ $1) == num (S t).
   Proof.
@@ -298,12 +311,34 @@ Section Qdec.
     fspecialize (Hars z x). rewrite !num_subst in Hars.
     fapply ax_sym. fapply Hars. fapply ax_sym. fapply "Hz".
   Qed.
+  Lemma pless_swap_succ t : Qeq ⊢ ∀ ($0 ⧀=comm num t) ~> ($0 ⧀=comm σ (num t)).
+  Proof. 
+    rewrite !pless_swap_eq, !num_subst.
+    fstart. fintros x "[z Hz]". fexists (σ z).
+    frewrite (ax_add_rec x z). fapply ax_succ_congr. ctx.
+  Qed.
+  Lemma pless_swap_sym t : Qeq ⊢ num t ⧀=comm num t.
+  Proof.
+    rewrite !pless_swap_eq.
+    fexists zero. fapply ax_sym. fapply ax_add_zero.
+  Qed.
   Lemma pless_sym t : Qeq ⊢ num t ⧀= num t.
   Proof.
     rewrite !pless_eq.
     fexists zero. fapply ax_sym. apply add_zero_num.
   Qed.
 
+  Lemma pless_swap_sigma_neq t : Qeq ⊢ ∀ ($0 ⧀=comm σ(num t)) ~> ¬($0 == σ(num t)) ~> $0 ⧀=comm num t.
+  Proof. 
+    fstart. fintros. fdestruct "H" as "[z Hz]".
+    fassert ax_cases as "C"; first ctx.
+    fdestruct ("C" z) as "[Hz'|[z' Hz']]".
+    - fexfalso. fapply "H0". frewrite "Hz". frewrite "Hz'".
+      fapply ax_sym. fapply ax_add_zero.
+    - fexists z'. fapply ax_succ_inj.
+      frewrite <-(ax_add_rec x z').
+      frewrite <-"Hz'". ctx.
+  Qed. 
   Lemma pless_sigma_neq t : Qeq ⊢ ∀ ($0 ⧀= σ(num t)) ~> ¬($0 == σ(num t)) ~> $0 ⧀= num t.
   Proof. 
     rewrite !pless_eq. 
@@ -432,10 +467,47 @@ Section Qdec.
           pose proof (pless_sym (S t)). cbn in H. fapply H.
   Qed.
 
-  Lemma bounded_exist_comm_disj φ t :
+  Lemma bounded_exist_swap_disj φ t :
     Qeq ⊢ (∃ ($0 ⧀=comm (num t)) ∧ φ) <~> fin_disj t φ.
   Proof.
-  Admitted.
+    cbn. induction t; fstart; cbn.
+    - fsplit.
+      + fintros. do 2 fdestruct "H". 
+        fassert (x == zero).
+        { fapply pless_swap_zero_eq. rewrite pless_swap_subst. cbn.
+          fapply "H". }
+        feapply Q_leibniz; ctx.
+      + fintros. fexists zero. fsplit.
+        * pose proof (pless_swap_sym 0). cbn in H.
+          fapply H.
+        * ctx.
+    - fsplit.
+      + fintros. do 2 fdestruct "H". 
+        fassert (x == σ (num t) ∨ ¬(x == σ (num t))).
+        { pose proof (Q_eqdec (S t)). cbn in H.
+          fspecialize (H x). rewrite num_subst in H.
+          fapply H. }
+        fdestruct "H1".
+        * fright. feapply Q_leibniz; ctx.
+        * fleft. fapply IHt. fexists x. fsplit; last ctx.
+          pose proof (pless_swap_sigma_neq t).
+          fspecialize (H x). rewrite !pless_swap_subst in H. cbn in H.
+          rewrite !pless_swap_subst. cbn.
+          rewrite num_subst in *.
+          fapply H; ctx.
+      + fintros. fdestruct "H".
+        * fapply IHt in "H". fdestruct "H". fexists x. rewrite !pless_swap_subst. cbn.
+          rewrite !num_subst.
+          fdestruct "H".
+          fsplit; last ctx.
+          pose proof (pless_swap_succ t). fspecialize (H x).
+          rewrite !pless_swap_subst in H. cbn in H. rewrite num_subst in H.
+          fapply H. ctx.
+        * fexists (σ num t). 
+          fsplit; last ctx.
+          rewrite pless_swap_subst. cbn. rewrite num_subst.
+          pose proof (pless_swap_sym (S t)). cbn in H. fapply H.
+  Qed.
   Lemma Qdec_fin_conj φ t :
     Qdec φ -> Qdec (fin_conj t φ).
   Proof.
@@ -465,27 +537,191 @@ Section Qdec.
       + fapply H1. ctx.
       + fapply H0. ctx.
   Qed.
-
-  Lemma Qdec_bounded_forall t φ :
-    Qdec φ -> Qdec (∀ $0 ⧀= t`[↑] ~> φ).
+  Lemma bounded_t_0 t ρ :
+    bounded_t 0 t -> t`[ρ] = t.
   Proof.
-    intros HQdec ρ Hb.
-    assert (bounded_t 0 t) as Hbt.
-    { cbn in Hb. 
+    intros Hb. rewrite <-subst_term_var.
+    eapply bounded_subst_t; last eassumption.
+    lia.
+  Qed.
+
+
+  Lemma subst_up2 φ t ρ : bounded_t 0 t -> φ[t..][ρ] = φ[up ρ][t..].
+  Proof.
+    intros Hb. rewrite !subst_comp. apply subst_ext.
+    intros [|n]; cbn; unfold "↑";cbn.
+    - now apply bounded_t_0. 
+    - rewrite !subst_term_comp. rewrite <-subst_term_var at 1.
+      apply subst_term_ext. intros [|n']; reflexivity.
+  Qed.
+
+  Lemma fin_conj_subst n φ ρ :
+    (fin_conj n φ)[ρ] = fin_conj n φ[up ρ].
+  Proof.
+    induction n; cbn.
+    - apply subst_up2. solve_bounds.
+    - cbn. f_equal; first assumption.
+      apply subst_up2. solve_bounds. apply num_bound.
+  Qed.
+  Lemma fin_conj_bound n φ :
+    bounded 1 φ -> bounded 0 (fin_conj n φ).
+  Proof.
+    intros Hb. induction n; cbn.
+    - eapply subst_bound; first eassumption.
+      intros [|n]; solve_bounds.
+    - cbn. constructor; first assumption.
+      eapply subst_bound; first eassumption.
+      intros [|n'] Hn; last lia. apply (num_bound (S n)).
+  Qed.
+
+  (* NOTE: this lemma could be strengthened to allow arbitrary terms t`[↑] in
+   * place of $(S t). Unfortunately this leads to horrible substitution lemmas 
+   * and boundedness inversions. *)
+  Lemma Qdec_bounded_forall t φ :
+    Qdec φ -> Qdec (∀ $0 ⧀= $(S t) ~> φ).
+  Proof.
+    intros HQdec ρ Hb. cbn. rewrite pless_subst. cbn.
+    assert (bounded_t 0 (ρ t)) as Hbt.
+    { cbn in Hb. rewrite pless_subst in Hb.
       inversion Hb. subst.
       apply Eqdep_dec.inj_pair2_eq_dec in H3; try decide equality. subst.
+      inversion H2. subst.
+      apply Eqdep_dec.inj_pair2_eq_dec in H0; try decide equality. subst.
+      apply pless_invert_bound in H4 as [_ H].
+      apply up_invert_bound_t. apply H. }
 
+    destruct (closed_term_is_num Hbt) as [n Hn].
 
-    Check closed_term_is_num.
-  Admitted.
+    assert (bounded 1 φ[up ρ]) as Hbφ.
+    { cbn in Hb.
+      inversion Hb. subst.
+      apply Eqdep_dec.inj_pair2_eq_dec in H3; try decide equality. subst.
+      inversion H2. subst.
+      apply Eqdep_dec.inj_pair2_eq_dec in H5; try decide equality. now subst. }
+
+    pose proof (bounded_forall_conj (φ[up ρ]) n) as H.
+    destruct (@Qdec_fin_conj _ n HQdec ρ) as [Hf|Hf].
+    { rewrite fin_conj_subst. now apply fin_conj_bound. }
+    - left. rewrite fin_conj_subst in Hf.
+      fstart. 
+      fassert (∀ $0 ⧀= num n ~> φ[up ρ]).
+      { fapply H. fapply Hf. }
+      fintros. 
+      rewrite !pless_eq. cbn. 
+      do 3 try rewrite bounded_t_0; try assumption.
+      rewrite num_subst. unfold "↑".
+      fapply "H". fdestruct "H0". fexists x0.
+      rewrite bounded_t_0; last assumption. frewrite <-"H0".
+      fapply ax_sym. fapply Hn.
+    - right. rewrite fin_conj_subst in Hf.
+      fstart. fintros. fapply Hf.
+      fapply H. 
+      fintros. fapply "H".
+      rewrite !pless_eq. fdestruct "H0".
+      fexists x0. frewrite <-"H0". fapply Hn.
+  Qed.
+
+  Lemma fin_disj_subst n φ ρ :
+    (fin_disj n φ)[ρ] = fin_disj n φ[up ρ].
+  Proof.
+    induction n; cbn.
+    - apply subst_up2. solve_bounds.
+    - cbn. f_equal; first assumption.
+      apply subst_up2. solve_bounds. apply num_bound.
+  Qed.
+  Lemma fin_disj_bound n φ :
+    bounded 1 φ -> bounded 0 (fin_disj n φ).
+  Proof.
+    intros Hb. induction n; cbn.
+    - eapply subst_bound; first eassumption.
+      intros [|n]; solve_bounds.
+    - cbn. constructor; first assumption.
+      eapply subst_bound; first eassumption.
+      intros [|n'] Hn; last lia. apply (num_bound (S n)).
+  Qed.
+
   Lemma Qdec_bounded_exists t φ :
-    Qdec φ -> Qdec (∃ ($0 ⧀= t`[↑]) ∧ φ).
+    Qdec φ -> Qdec (∃ ($0 ⧀= $(S t)) ∧ φ).
   Proof.
-  Admitted.
+    intros HQdec ρ Hb. cbn. rewrite pless_subst. cbn.
+    assert (bounded_t 0 (ρ t)) as Hbt.
+    { cbn in Hb. rewrite pless_subst in Hb.
+      inversion Hb. subst.
+      apply Eqdep_dec.inj_pair2_eq_dec in H3; try decide equality. subst.
+      inversion H2. subst.
+      apply Eqdep_dec.inj_pair2_eq_dec in H0; try decide equality. subst.
+      apply pless_invert_bound in H4 as [_ H].
+      apply up_invert_bound_t. apply H. }
+
+    destruct (closed_term_is_num Hbt) as [n Hn].
+
+    assert (bounded 1 φ[up ρ]) as Hbφ.
+    { cbn in Hb.
+      inversion Hb. subst.
+      apply Eqdep_dec.inj_pair2_eq_dec in H3; try decide equality. subst.
+      inversion H2. subst.
+      apply Eqdep_dec.inj_pair2_eq_dec in H5; try decide equality. now subst. }
+
+    pose proof (bounded_exist_disj (φ[up ρ]) n) as H.
+    destruct (@Qdec_fin_disj _ n HQdec ρ) as [Hf|Hf].
+    { rewrite fin_disj_subst. now apply fin_disj_bound. }
+    - left. rewrite fin_disj_subst in Hf.
+      fstart. 
+      fassert (∃ ($0 ⧀= num n) ∧ φ[up ρ]).
+      { fapply H. fapply Hf. }
+      fdestruct "H". fdestruct "H".
+      fexists x. fsplit; last ctx.
+      rewrite !pless_eq. cbn. 
+      fdestruct "H". fexists x0.
+      frewrite Hn. fapply "H".
+    - right. rewrite fin_disj_subst in Hf.
+      fstart. fintros. fdestruct "H". fdestruct "H".
+      fapply Hf. fapply H.
+      fexists x. fstart. fsplit; last ctx.
+      rewrite !pless_eq. cbn. fdestruct "H".
+      fexists x0. frewrite <-"H". fapply ax_sym. fapply Hn.
+  Qed.
   Lemma Qdec_bounded_exists_comm t φ :
-    Qdec φ -> Qdec (∃ ($0 ⧀=comm t`[↑]) ∧ φ).
+    Qdec φ -> Qdec (∃ ($0 ⧀=comm $(S t)) ∧ φ).
   Proof.
-  Admitted.
+    intros HQdec ρ Hb. cbn. rewrite pless_swap_subst. cbn.
+    assert (bounded_t 0 (ρ t)) as Hbt.
+    { cbn in Hb. rewrite pless_swap_subst in Hb.
+      inversion Hb. subst.
+      apply Eqdep_dec.inj_pair2_eq_dec in H3; try decide equality. subst.
+      inversion H2. subst.
+      apply Eqdep_dec.inj_pair2_eq_dec in H0; try decide equality. subst.
+      apply pless_swap_invert_bound in H4 as [_ H].
+      apply up_invert_bound_t. apply H. }
+
+    destruct (closed_term_is_num Hbt) as [n Hn].
+
+    assert (bounded 1 φ[up ρ]) as Hbφ.
+    { cbn in Hb.
+      inversion Hb. subst.
+      apply Eqdep_dec.inj_pair2_eq_dec in H3; try decide equality. subst.
+      inversion H2. subst.
+      apply Eqdep_dec.inj_pair2_eq_dec in H5; try decide equality. now subst. }
+
+    pose proof (bounded_exist_swap_disj (φ[up ρ]) n) as H.
+    destruct (@Qdec_fin_disj _ n HQdec ρ) as [Hf|Hf].
+    { rewrite fin_disj_subst. now apply fin_disj_bound. }
+    - left. rewrite fin_disj_subst in Hf.
+      fstart. 
+      fassert (∃ ($0 ⧀=comm num n) ∧ φ[up ρ]).
+      { fapply H. fapply Hf. }
+      fdestruct "H". fdestruct "H".
+      fexists x. fsplit; last ctx.
+      rewrite !pless_swap_eq. cbn. 
+      fdestruct "H". fexists x0.
+      frewrite Hn. fapply "H".
+    - right. rewrite fin_disj_subst in Hf.
+      fstart. fintros. fdestruct "H". fdestruct "H".
+      fapply Hf. fapply H.
+      fexists x. fsplit; last ctx.
+      rewrite !pless_swap_eq. cbn. fdestruct "H".
+      fexists x0. frewrite <-"H". fapply ax_sym. fapply Hn.
+  Qed.
 
   
 End Qdec.
@@ -532,7 +768,7 @@ Section Sigma1.
     intros HQ Hb.
     exists (∃ ($0 ⧀= $1) ∧ ∃ ($0 ⧀=comm $2) ∧ φ[up (up (S >> var))]).
     repeat split.
-    { apply (@Qdec_bounded_exists _ $0), (@Qdec_bounded_exists_comm _ $1).
+    { apply (@Qdec_bounded_exists _ 0), (@Qdec_bounded_exists_comm _ 1).
       apply Qdec_subst, HQ. }
     { constructor. constructor.
       { rewrite pless_eq. 
@@ -540,9 +776,10 @@ Section Sigma1.
         repeat solve_bounds. }
       constructor. constructor.
       { eapply (@bounded_up _ _ _ _ 3); last lia.
+        rewrite pless_swap_eq.
         constructor. repeat solve_bounds. }
       eapply subst_bound; first eassumption.
-      intros n' H'. Print bounded_t.
+      intros n' H'.
       destruct n' as [|[|n']]; cbn; unfold "↑"; cbn; constructor; lia. }
     apply CI.
     - apply II.

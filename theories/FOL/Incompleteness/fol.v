@@ -98,7 +98,6 @@ Section syntax.
 
   Definition pless x y := ∃ y`[↑] == (x`[↑] ⊕ $0).
   Definition pless_swap x y := ∃ y`[↑] == ($0 ⊕ x`[↑]).
-  Definition pless_or x y := ∃ y`[↑] == ($0 ⊕ x`[↑]) ∨ y`[↑] == (x`[↑] ⊕ $0).
   Definition mless {M} {I : interp M} x y := exists k, y = x i⊕ k.
 
   Lemma pless_eq x y : pless x y = ∃ y`[↑] == (x`[↑] ⊕ $0).
@@ -126,18 +125,39 @@ Section syntax.
   Qed.
 
 
+  Lemma pless_swap_eq x y : pless_swap x y = ∃ y`[↑] == ($0 ⊕ x`[↑]).
+  Proof. reflexivity. Qed.
+  Lemma pless_swap_subst x y ρ : (pless_swap x y)[ρ] = pless_swap (x`[ρ]) (y`[ρ]).
+  Proof.
+    rewrite !pless_swap_eq. cbn. do 3 f_equal.
+    - rewrite !subst_term_comp. reflexivity. 
+    - do 3 f_equal. rewrite !subst_term_comp. reflexivity. 
+  Qed.
+  Lemma pless_swap_invert_bound n x y : bounded n (pless_swap x y) -> bounded_t n x /\ bounded_t n y.
+  Proof.
+    unfold pless_swap. intros Hb.
+    inversion Hb. subst.
+    apply Eqdep_dec.inj_pair2_eq_dec in H3; try decide equality. subst.
+    inversion H2. subst.
+    apply Eqdep_dec.inj_pair2_eq_dec in H4; try decide equality. subst.
+    split.
+    - assert (bounded_t (S n) (x`[↑] ⊕ $0)) as H by (apply H3; right; left).
+      inversion H. subst.
+      apply Eqdep_dec.inj_pair2_eq_dec in H4; try decide equality. subst.
+      apply up_invert_bound_t. apply H1. left.
+    - apply up_invert_bound_t. apply H3. left.
+  Qed.
+
+
 
   (* TODO add *)
   Global Opaque pless.
-  (* Global Opaque pless_swap.*)
-  (* Global Opaque pless_or.*)
+  Global Opaque pless_swap.
   (*  Global Opaque mless.*)
 End syntax.
 (* Notations for le *)
 Notation "x '⧀=' y"  := (pless x y) (at level 42) : PA_Notation.
 Notation "x '⧀=comm' y"  := (pless_swap x y) (at level 42) : PA_Notation.
-(* TODO remove if not needed *)
-Notation "x '⧀==' y"  := (pless_or x y) (at level 42) : PA_Notation.
 (* NOTE this definition requires extensionality of the model *)
 Notation "x 'i⧀=' y"  := (mless x y) (at level 42) : PA_Notation.
 
