@@ -14,35 +14,11 @@ Ltac first s := only 1: s.
 Ltac last s := cycle -1; only 1: (s + fail).
 
 
-Lemma decidable_equiv X p q : (forall (x : X), p x <-> q x) -> decidable p -> decidable q.
-Proof.
-  firstorder.
-Qed.
-Lemma enumerable_equiv X (P Q : X -> Prop) :
-  (forall x, P x <-> Q x) -> enumerable P -> enumerable Q.
-Proof.
-  intros H [f Hf]. exists f. intros x. rewrite <- H. apply Hf.
-Qed.
-
-Definition ldecidable X (p : X -> Prop) := forall x, p x \/ ~p x.
-
 Definition mu (p : nat -> Prop) :
   (forall x, dec (p x)) -> ex p -> sig p.
 Proof.
   apply constructive_indefinite_ground_description_nat_Acc.
 Qed.
-
-Theorem weakPost X (p : X -> Prop) :
-  discrete X -> ldecidable p -> enumerable p -> enumerable (fun x => ~ p x) -> decidable p.
-Proof.
-  intros [E] % discrete_iff Hl [f Hf] [g Hg].
-  eapply decidable_iff. econstructor. intros x.
-  assert (exists n, f n = Some x \/ g n = Some x) by (destruct (Hl x); firstorder).
-  destruct (@mu (fun n => f n = Some x \/ g n = Some x)) as [n HN]; trivial.
-  - intros n. exact _.
-  - decide (f n = Some x); decide (g n = Some x); firstorder.
-Qed.
-
 Lemma vec_1_inv X (v : vec X 1) : {a & v = a ## vec_nil}.
 Proof.
   repeat depelim v. eauto.

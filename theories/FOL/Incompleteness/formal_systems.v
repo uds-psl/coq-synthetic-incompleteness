@@ -42,12 +42,6 @@ Section facts.
   Proof.
     intros s Hs Heq. apply (consistent fs s); congruence.
   Qed.
-  Lemma neg_no_fixpoint_comp : complete -> forall s, s <> neg s.
-  Proof.
-    intros complete s. destruct (complete s).
-    - now apply neg_no_fixpoint_provable.
-    - now apply neg_no_fixpoint_refutable.
-  Qed.
 
   Lemma undeepen_provability s : complete -> fs ⊬F s -> fs ⊢F neg s.
   Proof.
