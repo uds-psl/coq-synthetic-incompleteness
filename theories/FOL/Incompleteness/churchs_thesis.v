@@ -107,3 +107,58 @@ Section ct.
 
 End ct.
 
+Section ct_nat_bool.
+  Local Definition bool_to_nat (b : bool) := if b then 1 else 0.
+  Local Definition nat_to_bool (n : nat) := match n with 0 => Some false | 1 => Some true | _ => None end.
+  Lemma ct_nat_bool : (exists theta : nat -> nat -\ nat, is_universal theta) -> (exists theta : nat -> nat -\ bool, is_universal theta).
+  Proof.
+    intros [theta theta_universal].
+    unshelve eexists.
+    { intros c x. unshelve eexists.
+      { intros k. exact (match core (theta c x) k with
+               | Some n => nat_to_bool n
+               | None => None
+               end). }
+      intros y1 y2 k1 k2 H1 H2.
+      destruct (core _ k1) as [[|[|n1]]|] eqn:Hk1, (core _ k2) as [[|[|n2]]|] eqn:Hk2; cbn in *.
+      all: try congruence.
+      - enough (0 = 1) by congruence.
+        eapply part_functional.
+        + exists k1. eassumption.
+        + exists k2. eassumption.
+      - enough (1 = 0) by congruence.
+        eapply part_functional.
+        + exists k1. eassumption.
+        + exists k2. eassumption. }
+    intros f. 
+    unshelve edestruct theta_universal as [c Hc]. 
+    { intros x. unshelve eexists. 
+      { intros k. exact (match core (f x) k with 
+                         | Some b => Some (bool_to_nat b)
+                         | None => None
+                         end). }
+      intros y1 y2 k1 k2 H1 H2.
+      destruct (core _ k1) as [[|]|] eqn:Hk1, (core _ k2) as [[|]|] eqn:Hk2.
+      all: try congruence.
+      - enough (true = false) by congruence.
+        eapply part_functional.
+        + exists k1. eassumption.
+        + exists k2. eassumption.
+      - enough (false = true) by congruence.
+        eapply part_functional.
+        + exists k1. eassumption.
+        + exists k2. eassumption. }
+    exists c. intros x y. split; intros [k Hk].
+    - assert (theta c x ▷ bool_to_nat y) as [k' Hk'].
+      { rewrite <-Hc. exists k. cbn. now rewrite Hk. }
+      exists k'. cbn. rewrite Hk'. now destruct y.
+    - assert (theta c x ▷ bool_to_nat y) as [k' Hk']%Hc.
+      { exists k. cbn in Hk. destruct core; try congruence.
+        destruct y, n as [|[|n]]; cbn in *; try congruence. }
+      exists k'. cbn in Hk'. destruct (core (f x) k') as [[]|], y as []; cbn in *; congruence.
+  Qed.
+End ct_nat_bool.
+
+    
+
+

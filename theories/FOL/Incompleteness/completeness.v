@@ -198,32 +198,14 @@ Module completeness. Section completeness.
                (φ2_sem : forall x ρ, P2 x <-> interp_nat; ρ ⊨ ∃ φ2[(num x) ..]).
 
 
-    Definition φ1' := φ1 ∧ ∀ $0 ⧀ $2 ~> φ2[$1 .: $0 ..] ~> ⊥.
-    Definition φ2' := φ2 ∧ ∀ $0 ⧀ $2 ~> φ1[$1 .: $0 ..] ~> ⊥.
+    Definition φ1' := φ1 ∧ ∀ $0 ⧀= $2 ~> φ2[$1 .: $0 ..] ~> ⊥.
+    Definition φ2' := φ2 ∧ ∀ $0 ⧀= $2 ~> φ1[$1 .: $0 ..] ~> ⊥.
 
-    (* Lemma φ1_bounded_subst ρ : φ1[ρ] = φ1[ρ 0 .: (ρ 1) ..]. *)
-    (* Proof. *)
-    (*   eapply bounded_subst; first apply φ1_bounded. intros [|[|k]]; easy + lia. *)
-    (* Qed. *)
-    (* Lemma φ2_bounded_subst ρ : φ2[ρ] = φ2[ρ 0 .: (ρ 1) ..]. *)
-    (* Proof. *)
-    (*   eapply bounded_subst; first apply φ2_bounded. intros [|[|k]]; easy + lia. *)
-    (* Qed. *)
-
-    Lemma φ1'_bounded : bounded 2 φ1'.
-    Proof using φ1_bounded.
-      solve_bounds.
-      - assumption.
-      - cbn. unfold "↑". constructor. lia.
-      - cbn. unfold "↑". constructor.
-        admit.
-      - eapply subst_bound; first eassumption.
-        intros [|[|n]] H.
-        + constructor. lia.
-        + constructor. lia.
-        + lia.
-    Admitted.
-
+    Lemma bounded_subst_2 φ ρ : bounded 2 φ -> φ[ρ] = φ[ρ 0 .: (ρ 1) ..].
+    Proof.
+      intros H. eapply bounded_subst; first eassumption.
+      intros [|[|k]]; easy + lia.
+    Qed.
     Lemma φ1_sem' x ρ : P1 x <-> exists k, interp_nat; ρ ⊨ φ1[num x .: (num k) ..].
     Proof.
       rewrite φ1_sem. cbn.
@@ -246,6 +228,8 @@ Module completeness. Section completeness.
       exists (iμ k). split.
       - rewrite sat_single_PA, subst_comp, bounded_subst_2; last assumption. cbn.
         rewrite num_subst. eapply Qdec_absoluteness_nat; eauto.
+        eapply subst_bound; first eassumption.
+        intros [|[|n]] Hn; (apply num_bound + lia).
       - cbn. intros k' [d Hd] H2.
 
         assert (standard k') as [k'' <-].
@@ -256,6 +240,8 @@ Module completeness. Section completeness.
 
         enough (P2 x) by (eapply P_disjoint; eassumption).
         eapply φ2_sem' with (ρ := fun _ => 0). exists k''. eapply Qdec_absoluteness_nat; eauto.
+        eapply subst_bound; first eassumption.
+        intros [|[|n]] Hn; (apply num_bound + lia).
     Qed.
     Lemma DR2 x : P2 x -> Qeq ⊢C ¬∃ φ1'[(num x)..].
     Proof.
@@ -264,7 +250,7 @@ Module completeness. Section completeness.
       assert (exists k, (fun _ => 0) ⊨ φ2[num x .: (num k) ..]) as [kk Hkk] by now apply φ2_sem'.
       apply (Hk2 (iμ kk)).
       - enough (~standard k).
-        { setoid_rewrite Mext. apply nonstandard_large; assumption. }
+        { rewrite pless_eq. cbn. setoid_rewrite Mext. apply nonstandard_large; assumption. }
         intros [k' <-].
 
         rewrite sat_single_PA in Hk1. rewrite !subst_comp, bounded_subst_2 in Hk1; last assumption. cbn in Hk1.
@@ -272,9 +258,14 @@ Module completeness. Section completeness.
 
         enough (P1 x) by (eapply P_disjoint; eassumption).
         eapply φ1_sem' with (ρ := (fun _ => 0)). exists k'. eapply Qdec_absoluteness_nat; eauto.
+        eapply subst_bound; first eassumption.
+        intros [|[|n]] Hn; (apply num_bound + lia).
       - rewrite sat_single_PA, !subst_comp, bounded_subst_2; last assumption. cbn.
         rewrite !num_subst. eapply Qdec_absoluteness_nat; eauto.
+        eapply subst_bound; first eassumption.
+        intros [|[|n]] Hn; (apply num_bound + lia).
     Qed.
   End value_disj.
+  
 
 End completeness. End completeness.

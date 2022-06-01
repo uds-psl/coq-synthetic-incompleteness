@@ -43,19 +43,14 @@ Proof.
   - decide (f n = Some x); decide (g n = Some x); firstorder.
 Qed.
 
-Lemma vec_inv1 X (v : vec X 1) :
-    v = Vector.hd v ## vec_nil.
-Proof.
-  repeat depelim v. cbn. reflexivity.
-Qed.
 Lemma vec_1_inv X (v : vec X 1) : {a & v = a ## vec_nil}.
 Proof.
-  Locate depelim.
-  depelim v. depelim v. eauto.
+  repeat depelim v. eauto.
 Qed.
 Lemma vec_2_inv X (v : vec X 2) : { a & { b & v = a ## b ## vec_nil} }.
 Proof.
-Admitted.
+  repeat depelim v. eauto.
+Qed.
 Lemma vec_singleton {X} (a b : X) : Vector.In a (Vector.cons _ b _ (Vector.nil _)) -> a = b.
 Proof.
   inversion 1.

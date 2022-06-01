@@ -11,29 +11,25 @@ Section abstract.
   Section halt.
     Hypothesis prov_dec : decidable fs.(P).
 
-    Hypothesis Hrepr : exists (r : nat -> S), forall c,
-      (exists y, theta c c ▷ y) <-> fs ⊢F r c.
+    Variable (r : nat -> S).
+    Hypothesis Hrepr : forall c, (exists y, theta c c ▷ y) <-> fs ⊢F r c.
 
     Lemma halt_undecidability : False.
     Proof.
-      destruct Hrepr as [r Hr].
       destruct prov_dec as [f Hf].
       enough (decidable (fun c => exists y, theta c c ▷ y)).
       { now eapply special_halting_undec. }
-      (* TODO arguments of provable_decidable and presumably other lemmas shoudl include fs *)
       exists (fun c => f (r c)).
       unfold decider,reflects in *.
-      intros x. rewrite <-Hf. apply Hr.
+      intros x. rewrite <-Hf. apply Hrepr.
     Qed.
   End halt.
   Section halt.
-    Hypothesis Hrepr : exists (r : nat -> S), forall c,
-      (exists y, theta c c ▷ y) <-> fs ⊢F r c.
+    Variable (r : nat -> S).
+    Hypothesis Hrepr : forall c, (exists y, theta c c ▷ y) <-> fs ⊢F r c.
 
-    Lemma halt_incompleteness : exists s, independent fs s.
+    Lemma halt_incompleteness : exists n, independent fs (r n).
     Proof.
-      destruct Hrepr as [r Hr].
-
       destruct fs.(P_enumerable) as [prov Hprov].
       pose proof fs.(S_discrete) as [S_eqdec]%discrete_iff.
 
@@ -45,10 +41,10 @@ Section abstract.
         cbn. intros y1 y2 k1 k2 H1 H2.
         destruct (prov k1), (prov k2); repeat destruct S_eqdec; try congruence. }
 
-      destruct (theta_universal f) as [c Hc]. exists (r c).
+      destruct (theta_universal f) as [c Hc]. exists c.
       enough (fs ⊢F r c <-> fs ⊢F neg (r c)) as H.
       { split; intros H'; apply (consistent fs (r c)); tauto. }
-      rewrite <-Hr. split.
+      rewrite <-Hrepr. split.
       - intros [y Hy]. rewrite <-Hc in Hy.
         destruct Hy as [k Hk]. cbn in Hk.
         destruct (prov k) eqn:H; try destruct S_eqdec; try congruence.
@@ -61,31 +57,31 @@ Section abstract.
   Section insep.
     Hypothesis prov_dec : decidable fs.(P).
 
-    Hypothesis Hrepr : exists (r : nat -> S), forall c,
+    Variable r : nat -> S.
+    Hypothesis Hrepr : forall c,
       (theta c c ▷ true -> fs ⊢F r c) /\
       (theta c c ▷ false -> fs ⊢F neg (r c)).
 
     Lemma insep_undecidability : False.
     Proof.
-      destruct Hrepr as [r Hr].
       destruct prov_dec as [f Hf].
       unshelve eapply (@no_recursively_separating theta theta_universal).
       { exact (fun c => f (r c)). } cbn. 
       intros [] c H.
-      - apply Hf, Hr, H.
+      - apply Hf, Hrepr, H.
       - enough (f (r c) <> true) by now destruct f.
         unfold decider, reflects in Hf.
-        rewrite <-Hf. apply deepen_provability, Hr, H.
+        rewrite <-Hf. apply deepen_provability, Hrepr, H.
     Qed.
   End insep.
 
   Section insep.
-    Hypothesis Hrepr : exists (r : nat -> S), forall c,
+    Variable r : nat -> S.
+    Hypothesis Hrepr :  forall c,
       (theta c c ▷ true -> fs ⊢F r c) /\
       (theta c c ▷ false -> fs ⊢F neg (r c)).
 
-    Lemma insep_incompleteness : exists s, independent fs s.
-      destruct Hrepr as [r Hr].
+    Lemma insep_incompleteness : exists n, independent fs (r n).
       destruct fs.(P_enumerable) as [prov Hprov].
       pose proof fs.(S_discrete) as [S_eqdec]%discrete_iff.
       destruct (is_provable fs) as [Pdec HPdec].
@@ -98,8 +94,8 @@ Section abstract.
       assert (forall b c, Pdec (r c) ▷ b -> f c ▷ b) as Hfcorr.
       { intros b c [k Hk]. exists k. exact Hk. }
       destruct (@recursively_separating_diverge theta theta_universal f) as [c Hc].
-      { intros [] c Hc; apply Hfcorr, HPdec, Hr, Hc. }
-      exists (r c). split.
+      { intros [] c Hc; apply Hfcorr, HPdec, Hrepr, Hc. }
+      exists c. split.
       - specialize (Hc true). contradict Hc.
         apply Hfcorr, HPdec, Hc.
       - specialize (Hc false). contradict Hc.
@@ -110,28 +106,22 @@ Section abstract.
     Variable (fs' : FS S neg).
     Hypothesis fs'_extension : extension fs' fs.
 
-    Hypothesis Hrepr : exists (r : nat -> S), forall c,
+    Variable r : nat -> S.
+    Hypothesis Hrepr : forall c,
       (theta c c ▷ true -> fs' ⊢F r c) /\
       (theta c c ▷ false -> fs' ⊢F neg (r c)).
 
-    Lemma insep_essential_incompleteness : exists s, independent fs s.
+    Lemma insep_essential_incompleteness : exists n, independent fs (r n).
     Proof.
-      apply insep_incompleteness. destruct Hrepr as [r Hr].
-      exists r. intros c. destruct (Hr c) as [Hr1 Hr2].
+      apply (@insep_incompleteness r).
+      intros c. destruct (Hrepr c) as [Hr1 Hr2].
       split; intros H.
       - apply fs'_extension. auto.
       - apply fs'_extension. auto.
     Qed.
-
   End insep.
 
   Section repr.
-    Lemma weak_representability_strong_separability' :
-      complete fs ->
-      ((exists r, forall c, (exists b,theta c c▷b) <-> fs ⊢F r c) <->
-      (exists r, forall c, (theta c c ▷ true -> fs ⊢F r c) /\
-      (theta c c ▷ false -> fs ⊢F neg (r c)))).
-    Proof. Abort.
     Lemma weak_representability_strong_separability r :
       complete fs ->
       (( forall c, theta c c ▷ true <-> fs ⊢F r c) ->

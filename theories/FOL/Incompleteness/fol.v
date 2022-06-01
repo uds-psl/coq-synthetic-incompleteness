@@ -19,12 +19,25 @@ Notation "I ⊨=L T" := (forall psi, List.In psi T -> I ⊨= psi) (at level 20).
 (* Notation for explicitely giving model *)
 Notation "I ; rho '⊨' phi" := (@sat _ _ _ I _ rho phi) (at level 20, rho at next level).
 
+
 Section lemmas.
   Existing Instance PA_preds_signature.
   Existing Instance PA_funcs_signature.
   Existing Instance interp_nat.
 
 
+  Lemma form_ind_falsity_on :
+    forall P : form -> Prop,
+      P falsity ->
+      (forall P0 (t : vec term (ar_preds P0)), P (atom P0 t)) ->
+      (forall (b0 : binop) (f1 : form), P f1 -> forall f2 : form, P f2 -> P (bin b0 f1 f2)) ->
+      (forall (q : quantop) (f2 : form), P f2 -> P (quant q f2)) ->
+      forall (f4 : form), P f4.
+  Proof.
+    intros. specialize (form_ind (fun ff => match ff with falsity_on => P | _ => fun _ => True end)).
+    intros H'. apply H' with (f3 := falsity_on); clear H'. all: intros; try destruct b; trivial.
+    all: intuition eauto 2.
+  Qed.
   Lemma num_subst x ρ : (num x)`[ρ] = num x.
   Proof.
     induction x; cbn; congruence.
@@ -41,11 +54,11 @@ Section lemmas.
   Lemma subst_bound_t t :
       forall sigma N B, bounded_t N t -> (forall n, n < N -> bounded_t B (sigma n) ) -> bounded_t B (t`[sigma]).
   Proof. 
-  Admitted. (* by Marc *)
+  Admitted.
   Lemma subst_bound psi :
       forall sigma N B, bounded N psi -> (forall n, n < N -> bounded_t B (sigma n) ) -> bounded B (psi[sigma]).
   Proof. 
-  Admitted. (* by Marc *)
+  Admitted.
   Lemma up_invert_bound_t n t :
     bounded_t (S n) t`[↑] -> bounded_t n t.
   Proof. 
@@ -73,6 +86,20 @@ Section lemmas.
     intros H ρ. eapply soundness.
     - eassumption.
     - apply nat_is_Q_model. 
+  Qed.
+
+  Lemma prv_intu_class T φ p : @prv _ _ _ intu T φ -> @prv _ _ _ p T φ.
+  Proof.
+    remember intu as p'.
+    induction 1.
+    all: firstorder intuition.
+    - eapply IE; eauto.
+    - eapply ExI; eauto.
+    - eapply ExE; eauto.
+    - eapply CE1; eauto.
+    - eapply CE2; eauto.
+    - eapply DE; eauto.
+    - discriminate.  
   Qed.
 
   Lemma iμ_eval_num M (I : interp M) k ρ : iμ k = eval ρ (num k).
