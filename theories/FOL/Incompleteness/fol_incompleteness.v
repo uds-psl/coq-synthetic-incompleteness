@@ -109,14 +109,13 @@ Section fol.
       intros x. erewrite Hr. instantiate (1 := fun _ => 0). split.
       - intros H. eapply Σ1_completeness.
         + now apply Σ1_subst.
-        + eapply subst_bound; first eassumption.
+        + eapply subst_bound; last eassumption.
           intros [|n] Hn; last lia. apply num_bound.
         + now rewrite <-sat_single_nat.
       - intros H. rewrite sat_single_nat. eapply soundness; first eassumption.
         apply nat_is_Q_model.
     Qed.
   End Q_weakly_represents.
-  Check weak_strong.
 
 
 
@@ -165,7 +164,7 @@ Section fol.
           now apply prv_intu_class. }
       cbn in H. exists ψ[(num x)..]. 
       repeat apply conj.
-      - eapply subst_bound; first eassumption. intros [|n] Hn; last lia. apply num_bound.
+      - eapply subst_bound; last eassumption. intros [|n] Hn; last lia. apply num_bound.
       - now apply Σ1_subst.
       - apply H.
       - apply H.
@@ -173,4 +172,5 @@ Section fol.
   End Q_incomplete.
 
 End fol.
+
 

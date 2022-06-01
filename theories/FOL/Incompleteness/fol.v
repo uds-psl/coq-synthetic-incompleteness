@@ -50,15 +50,34 @@ Section lemmas.
     - intros t ->%vec_singleton.
       assumption.
    Qed.
+  Lemma subst_bound_t {ff : falsity_flag} n m t sigma : 
+    (forall i, i < n -> bounded_t m (sigma i)) -> bounded_t n t -> bounded_t m (t`[sigma]).
+  Proof.
+    intros Hi. induction 1 as [|? ? ? IH].
+    - cbn. apply Hi. lia.
+    - cbn. econstructor. intros t [x [<- Hx]]%Vectors.vect_in_map_iff.
+      now apply IH.
+  Qed.
 
-  Lemma subst_bound_t t :
-      forall sigma N B, bounded_t N t -> (forall n, n < N -> bounded_t B (sigma n) ) -> bounded_t B (t`[sigma]).
-  Proof. 
-  Admitted.
-  Lemma subst_bound psi :
-      forall sigma N B, bounded N psi -> (forall n, n < N -> bounded_t B (sigma n) ) -> bounded B (psi[sigma]).
-  Proof. 
-  Admitted.
+  Lemma subst_bounded_up_t {ff : falsity_flag} i m sigma : 
+    (forall i', i' < i -> bounded_t m (sigma i')) -> bounded_t (S m) (up sigma i).
+  Proof.
+    intros Hb. unfold up,funcomp,scons. destruct i.
+    - econstructor. lia.
+    - eapply subst_bound_t. 2: apply Hb. 2:lia.
+      intros ii Hii. econstructor. lia.
+  Qed.
+
+  Lemma subst_bound {ff : falsity_flag} n m phi sigma : 
+    (forall i, i < n -> bounded_t m (sigma i)) -> bounded n phi -> bounded m (phi[sigma]).
+  Proof. intros Hi.
+    induction 1 as [ff n P v H| bo ff n phi psi H1 IH1 H2 IH2| qo ff n phi H1 IH1| n] in Hi,sigma,m|-*; cbn; econstructor.
+    - intros t [x [<- Hx]]%Vectors.vect_in_map_iff. eapply subst_bound_t. 1: exact Hi. now apply H.
+    - apply IH1. easy.
+    - apply IH2. easy.
+    - apply IH1. intros l Hl.
+      apply subst_bounded_up_t. intros i' Hi'. apply Hi. lia.
+  Qed.
   Lemma up_invert_bound_t n t :
     bounded_t (S n) t`[↑] -> bounded_t n t.
   Proof. 

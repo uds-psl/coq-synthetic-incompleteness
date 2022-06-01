@@ -86,19 +86,6 @@ Section Qdec.
 
 
 
-  Lemma form_ind_falsity_on :
-    forall P : form -> Prop,
-      P falsity ->
-      (forall P0 (t : vec term (ar_preds P0)), P (atom P0 t)) ->
-      (forall (b0 : binop) (f1 : form), P f1 -> forall f2 : form, P f2 -> P (bin b0 f1 f2)) ->
-      (forall (q : quantop) (f2 : form), P f2 -> P (quant q f2)) ->
-      forall (f4 : form), P f4.
-  Proof.
-    intros. specialize (form_ind (fun ff => match ff with falsity_on => P | _ => fun _ => True end)).
-    intros H'. apply H' with (f3 := falsity_on); clear H'. all: intros; try destruct b; trivial.
-    all: intuition eauto 2.
-  Qed.
-
   Lemma Q_leibniz_t a x y : Qeq ⊢ x == y ~> a`[x..] == a`[y..].
   Proof.
     induction a.
@@ -567,10 +554,10 @@ Section Qdec.
     bounded 1 φ -> bounded 0 (fin_conj n φ).
   Proof.
     intros Hb. induction n; cbn.
-    - eapply subst_bound; first eassumption.
+    - eapply subst_bound; last eassumption.
       intros [|n]; solve_bounds.
     - cbn. constructor; first assumption.
-      eapply subst_bound; first eassumption.
+      eapply subst_bound; last eassumption.
       intros [|n'] Hn; last lia. apply (num_bound (S n)).
   Qed.
 
@@ -633,10 +620,10 @@ Section Qdec.
     bounded 1 φ -> bounded 0 (fin_disj n φ).
   Proof.
     intros Hb. induction n; cbn.
-    - eapply subst_bound; first eassumption.
+    - eapply subst_bound; last eassumption.
       intros [|n]; solve_bounds.
     - cbn. constructor; first assumption.
-      eapply subst_bound; first eassumption.
+      eapply subst_bound; last eassumption.
       intros [|n'] Hn; last lia. apply (num_bound (S n)).
   Qed.
 
@@ -778,7 +765,7 @@ Section Sigma1.
       { eapply (@bounded_up _ _ _ _ 3); last lia.
         rewrite pless_swap_eq.
         constructor. repeat solve_bounds. }
-      eapply subst_bound; first eassumption.
+      eapply subst_bound; last eassumption.
       intros n' H'.
       destruct n' as [|[|n']]; cbn; unfold "↑"; cbn; constructor; lia. }
     apply CI.
@@ -856,7 +843,7 @@ Section Sigma1.
     all: intros Hb.
     - exists φ[↑]. repeat split.
       { now apply Qdec_subst. }
-      { eapply subst_bound; first apply Hb. intros n H. constructor. lia. }
+      { eapply subst_bound; last apply Hb. intros n H. constructor. lia. }
       apply CI.
       + apply II. fexists $0. apply Ctx. now left.
       + apply II. eapply ExE; first (apply Ctx; now left).
@@ -923,13 +910,12 @@ Section Sigma1completeness.
       intros Hnat. destruct (Hnat (fun _ => 0)) as [d Hd].
       remember intu as Hintu. (* for proof mode *)
       fexists (num d). rewrite subst_comp. apply IH.
-      + rewrite <-subst_comp. eapply subst_bound.
-        * apply H4.
-        * intros [|n] Hn; last lia. apply num_bound.
+      + rewrite <-subst_comp. eapply subst_bound; last apply H4.
+        intros [|n] Hn; last lia. apply num_bound.
       + intros ρ'. rewrite <-subst_comp.
         rewrite sat_single_nat in Hd.
         eapply sat_closed; last apply Hd.
-        eapply subst_bound; first apply H4. 
+        eapply subst_bound; last apply H4. 
         intros [|n] Hn; last lia. apply num_bound.
     - intros Hb Hnat.
       destruct (H ρ Hb) as [H1 | H1].
@@ -945,11 +931,11 @@ Section Sigma1completeness.
     intros Hb HΣ Hφ. eapply Q_sound_intu with (rho := fun _ => 0) in Hφ as [x Hx].
     exists x. eapply Σ1_completeness with (ρ := fun _ => 0).
     - now apply Σ1_subst.
-    - eapply subst_bound; first eassumption.
+    - eapply subst_bound; last eassumption.
       intros [|n] H; last lia. apply num_bound.
     - eapply sat_closed; first last.
       + rewrite <-sat_single_nat. apply Hx.
-      + eapply subst_bound; first eassumption.
+      + eapply subst_bound; last eassumption.
         intros [|n] H; last lia. apply num_bound.
   Qed.
 

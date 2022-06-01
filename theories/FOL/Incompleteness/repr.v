@@ -61,7 +61,7 @@ Section value_disjoint.
       - intros H%soundness. apply H, nat_is_Q_model.
       - apply Σ1_completeness.
         + do 2 constructor. now apply Qdec_subst.
-        + solve_bounds. eapply subst_bound; first eassumption.
+        + solve_bounds. eapply subst_bound; last eassumption.
           intros [|[|n]] H; cbn. 2-3: solve_bounds.
           apply num_bound.
     Qed.
@@ -72,7 +72,7 @@ Section value_disjoint.
       - intros H%soundness. apply H, nat_is_Q_model.
       - apply Σ1_completeness.
         + do 2 constructor. now apply Qdec_subst.
-        + solve_bounds. eapply subst_bound; first eassumption.
+        + solve_bounds. eapply subst_bound; last eassumption.
           intros [|[|n]] H; cbn. 2-3: solve_bounds.
           apply num_bound.
     Qed.
@@ -85,7 +85,7 @@ Section value_disjoint.
       unfold φ1'. rewrite pless_eq.
       repeat solve_bounds.
       - assumption.
-      - eapply subst_bound; first eassumption.
+      - eapply subst_bound; last eassumption.
         intros [|[|n]] H; cbn; solve_bounds.
     Qed.
     Lemma φ2'_bounded : bounded 2 φ2'.
@@ -93,7 +93,7 @@ Section value_disjoint.
       unfold φ2'. rewrite pless_eq.
       repeat solve_bounds.
       - assumption.
-      - eapply subst_bound; first eassumption.
+      - eapply subst_bound; last eassumption.
         intros [|[|n]] H; cbn; solve_bounds.
     Qed.
     Lemma φ1'_qdec : Qdec φ1'.
@@ -117,7 +117,7 @@ Section value_disjoint.
     Proof.
       intros HP1. eapply Σ1_completeness with (ρ := fun _ => 0).
       { constructor. apply Σ1_subst. constructor. apply φ1'_qdec. }
-      { constructor. eapply subst_bound; first apply φ1'_bounded.
+      { constructor. eapply subst_bound; last apply φ1'_bounded.
         intros [|[|n]] H; try solve_bounds. apply num_bound. }
       pose proof HP1 as H. erewrite (φ1_sem _ _) in H.
       destruct H as [k Hk]. exists k.
@@ -136,7 +136,7 @@ Section value_disjoint.
     Proof. 
       intros HP1. eapply Σ1_completeness with (ρ := fun _ => 0).
       { constructor. apply Σ1_subst. constructor. apply φ2'_qdec. }
-      { constructor. eapply subst_bound; first apply φ2'_bounded.
+      { constructor. eapply subst_bound; last apply φ2'_bounded.
         intros [|[|n]] H; try solve_bounds. apply num_bound. }
       pose proof HP1 as H. erewrite (φ2_sem _ _) in H.
       destruct H as [k Hk]. exists k.
@@ -157,11 +157,11 @@ Section value_disjoint.
       assert (exists k, Qeq ⊢ φ2'[(num x)..][(num k)..]) as [k Hk].
       { apply Σ1_witness.
         - constructor. apply Qdec_subst. apply φ2'_qdec.
-        - eapply subst_bound; first apply φ2'_bounded.
+        - eapply subst_bound; last apply φ2'_bounded.
           intros [|[|n]] H; try solve_bounds. apply num_bound.
         - apply Σ1_completeness with (ρ := id).
           + constructor. apply Σ1_subst. constructor. apply φ2'_qdec.
-          + constructor. eapply subst_bound; first apply φ2'_bounded.
+          + constructor. eapply subst_bound; last apply φ2'_bounded.
             intros [|[|n]] H; try solve_bounds. apply num_bound.
           + apply DR1', soundness in HP2. apply HP2.
             apply nat_is_Q_model. }
@@ -198,7 +198,7 @@ Section value_disjoint.
     Proof.
       exists (∃ φ1'[$1 .: $0 ..]). repeat apply conj.
       { do 2 constructor. apply Qdec_subst, φ1'_qdec. }
-      { constructor. eapply subst_bound; first apply φ1'_bounded.
+      { constructor. eapply subst_bound; last apply φ1'_bounded.
         intros [|[|n]]; solve_bounds. }
       - intros x H%DR1. 
         replace ((_)[_]) with (∃ φ1'[(num x)..]); first assumption.
@@ -214,7 +214,6 @@ Section value_disjoint.
         now rewrite num_subst.
     Qed.
   End value_disjoint'.
-  Check weak_strong'.
 
   Section weak_strong.
     Existing Instance intu.
@@ -236,8 +235,8 @@ Section value_disjoint.
       destruct (@Σ1_compression _ φ1 1) as (ψ1 & HQ1 & Hb1 & Hψ1), (@Σ1_compression _ φ2 1) as (ψ2 & HQ2 & Hb2 & Hψ2).
       all: try assumption.
       apply weak_strong' with (φ1 := ψ1[$1.:$0..]) (φ2 := ψ2[$1.:$0..]).
-      { eapply subst_bound; first eassumption. intros [|[|n]]; solve_bounds. }
-      { eapply subst_bound; first eassumption. intros [|[|n]]; solve_bounds. }
+      { eapply subst_bound; last eassumption. intros [|[|n]]; solve_bounds. }
+      { eapply subst_bound; last eassumption. intros [|[|n]]; solve_bounds. }
       { now apply Qdec_subst. }
       { now apply Qdec_subst. }
       - intros x. rewrite φ1_syn. 
