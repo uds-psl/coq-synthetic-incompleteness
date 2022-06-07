@@ -81,6 +81,16 @@ Section fol.
       (theta c c ▷ true -> T' ⊢T r c) /\
       (theta c c ▷ false -> T' ⊢T ¬r c).
 
+    Lemma fol_undecidable_strong_repr : ~decidable (fun s => T ⊢T s).
+    Proof.
+      assert (~T' ⊢T ⊥) as T'consis.
+      { contradict Tconsis. now eapply WeakT. }
+      eapply (insep_essential_undecidability) with (theta := theta) (fs := fol_fs Tenum Tconsis) (fs' := fol_fs T'enum T'consis).
+      - assumption.
+      - unfold extension. cbn. intros φ Hφ. now eapply WeakT.
+      - eassumption.
+    Qed.
+
     Lemma fol_incomplete_strong_repr : exists n, ~T ⊢T r n /\ ~T ⊢T ¬r n.
     Proof.
       assert (~T' ⊢T ⊥) as T'consis.
@@ -145,6 +155,23 @@ Section fol.
      - rewrite Hk. destruct b; congruence.
      - destruct (core _ _) as [[]|], b; congruence.
     Qed. 
+    Theorem Q_undecidable : ~decidable (@tprv _ _ _ p T).
+    Proof.
+      assert (exists f : nat -> nat -\ bool, is_universal f) as [theta theta_universal].
+      { apply ct_nat_bool, CTmu, mu_universal. }
+      destruct (@Q_weak_repr mu_universal (fun c => theta c c ▷ true) (theta_c_c_enumerable theta true)) as (φ1 & Hb1 & HΣ1 & Hφ1).
+      destruct (@Q_weak_repr mu_universal (fun c => theta c c ▷ false) (theta_c_c_enumerable theta false)) as (φ2 & Hb2 & HΣ2 & Hφ2).
+      assert (forall c, theta c c ▷ true -> theta c c ▷ false -> False) as Hdisj.
+      { intros c Ht Hf. enough (true = false) by discriminate. eapply part_functional; eassumption. }
+      edestruct (weak_strong Hdisj Hb1 Hb2 HΣ1 HΣ2 Hφ1 Hφ2) as (ψ & Hb & HΣ & Hψ1 & Hψ2).
+      eapply (@fol_undecidable_strong_repr p theta theta_universal T Tenum Tconsis (list_theory Qeq) T_Q (list_theory_enumerable Qeq)).
+      instantiate (1 := fun c => ψ[(num c)..]).
+      intros c. split.
+      - intros H. exists Qeq. split; first auto.
+        now apply prv_intu_class.
+      - intros H. exists Qeq. split; first auto.
+        now apply prv_intu_class.
+    Qed.
     Theorem Q_incomplete : exists φ, bounded 0 φ /\ Σ1 φ /\ ~@tprv _ _ _ p T φ /\ ~@tprv _ _ _ p T (¬φ).
     Proof. 
       assert (exists f : nat -> nat -\ bool, is_universal f) as [theta theta_universal].

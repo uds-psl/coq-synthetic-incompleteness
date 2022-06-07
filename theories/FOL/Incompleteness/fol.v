@@ -109,16 +109,16 @@ Section lemmas.
 
   Lemma prv_intu_class T φ p : @prv _ _ _ intu T φ -> @prv _ _ _ p T φ.
   Proof.
-    remember intu as p'.
+    remember intu as p' eqn:H.
     induction 1.
-    all: firstorder intuition.
+    15: discriminate. 
+    1,3,4,7-9,12,13: auto.
     - eapply IE; eauto.
     - eapply ExI; eauto.
     - eapply ExE; eauto.
     - eapply CE1; eauto.
     - eapply CE2; eauto.
     - eapply DE; eauto.
-    - discriminate.  
   Qed.
 
   Lemma iμ_eval_num M (I : interp M) k ρ : iμ k = eval ρ (num k).
@@ -196,10 +196,10 @@ Section syntax.
     inversion H2. subst.
     apply Eqdep_dec.inj_pair2_eq_dec in H4; try decide equality. subst.
     split.
-    - assert (bounded_t (S n) (x`[↑] ⊕ $0)) as H by (apply H3; right; left).
+    - assert (bounded_t (S n) ($0 ⊕ x`[↑])) as H by (apply H3; right; left).
       inversion H. subst.
       apply Eqdep_dec.inj_pair2_eq_dec in H4; try decide equality. subst.
-      apply up_invert_bound_t. apply H1. left.
+      apply up_invert_bound_t. apply H1. right. left.
     - apply up_invert_bound_t. apply H3. left.
   Qed.
 

@@ -111,29 +111,23 @@ Section abstract.
       (theta c c ▷ true -> fs' ⊢F r c) /\
       (theta c c ▷ false -> fs' ⊢F neg (r c)).
 
+    Lemma strong_separability_extension : forall c,
+      (theta c c ▷ true -> fs ⊢F r c) /\
+      (theta c c ▷ false -> fs ⊢F neg (r c)).
+    Proof.
+      firstorder.
+    Qed.
+
     Lemma insep_essential_incompleteness : exists n, independent fs (r n).
     Proof.
       apply (@insep_incompleteness r).
-      intros c. destruct (Hrepr c) as [Hr1 Hr2].
-      split; intros H.
-      - apply fs'_extension. auto.
-      - apply fs'_extension. auto.
+      apply strong_separability_extension.
+    Qed.
+    Lemma insep_essential_undecidability : ~decidable (fun s => fs ⊢F s).
+    Proof.
+      intros H. eapply (@insep_undecidability H).
+      apply strong_separability_extension.
     Qed.
   End insep.
 
-  Section repr.
-    Lemma weak_representability_strong_separability r :
-      complete fs ->
-      (( forall c, theta c c ▷ true <-> fs ⊢F r c) ->
-      ( forall c, (theta c c ▷ true -> fs ⊢F r c) /\
-      (theta c c ▷ false -> fs ⊢F neg (r c)))).
-    Proof.
-      intros complete. intros Hr c.
-      split.
-      + firstorder.
-      + intros H. apply undeepen_provability. 1: assumption.
-        intros Htrue%Hr. enough (true = false) by discriminate.
-        eapply (@part_functional _ (theta c c)); assumption.
-    Qed.
-  End repr.
 End abstract.

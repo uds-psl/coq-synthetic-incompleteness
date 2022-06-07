@@ -173,7 +173,7 @@ Module completeness. Section completeness.
     bounded 0 φ -> Qdec φ -> I1; ρ1 ⊨ φ -> I2; ρ2 ⊨ φ.
   Proof.
     intros Hb HQ H1. destruct (HQ var) as [H|H].
-    { eapply subst_bound; first eassumption. lia. }
+    { eapply subst_bound; last eassumption. lia. }
     all: rewrite completeness in H.
     - rewrite <-subst_var. now apply H.
     - contradict H1. pattern φ. rewrite <-subst_var. now apply H.
@@ -228,7 +228,7 @@ Module completeness. Section completeness.
       exists (iμ k). split.
       - rewrite sat_single_PA, subst_comp, bounded_subst_2; last assumption. cbn.
         rewrite num_subst. eapply Qdec_absoluteness_nat; eauto.
-        eapply subst_bound; first eassumption.
+        eapply subst_bound; last eassumption.
         intros [|[|n]] Hn; (apply num_bound + lia).
       - cbn. intros k' [d Hd] H2.
 
@@ -240,7 +240,7 @@ Module completeness. Section completeness.
 
         enough (P2 x) by (eapply P_disjoint; eassumption).
         eapply φ2_sem' with (ρ := fun _ => 0). exists k''. eapply Qdec_absoluteness_nat; eauto.
-        eapply subst_bound; first eassumption.
+        eapply subst_bound; last eassumption.
         intros [|[|n]] Hn; (apply num_bound + lia).
     Qed.
     Lemma DR2 x : P2 x -> Qeq ⊢C ¬∃ φ1'[(num x)..].
@@ -258,11 +258,11 @@ Module completeness. Section completeness.
 
         enough (P1 x) by (eapply P_disjoint; eassumption).
         eapply φ1_sem' with (ρ := (fun _ => 0)). exists k'. eapply Qdec_absoluteness_nat; eauto.
-        eapply subst_bound; first eassumption.
+        eapply subst_bound; last eassumption.
         intros [|[|n]] Hn; (apply num_bound + lia).
       - rewrite sat_single_PA, !subst_comp, bounded_subst_2; last assumption. cbn.
         rewrite !num_subst. eapply Qdec_absoluteness_nat; eauto.
-        eapply subst_bound; first eassumption.
+        eapply subst_bound; last eassumption.
         intros [|[|n]] Hn; (apply num_bound + lia).
     Qed.
   End value_disj.
