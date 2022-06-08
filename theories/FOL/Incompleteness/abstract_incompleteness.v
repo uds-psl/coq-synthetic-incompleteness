@@ -41,12 +41,10 @@ Section abstract.
       destruct (theta_universal g) as [c Hc]. 
       assert (exists c, forall b, ~g c ▷ b) as [d Hd].
       { eapply special_halting_diverge; try eassumption.
-        - intros d [k Hk]. apply Hrepr, Hf1. exists k.
-          apply Hk.
-        - intros d [k Hk] y Hy.
-          eapply (fs.(consistent)).
+        - intros d [k Hk]. apply Hrepr, Hf1. now exists k.
+        - intros d [k Hk] y Hy. eapply (fs.(consistent)).
           + apply Hrepr. eauto.
-          + apply Hf2. exists k. apply Hk. }
+          + apply Hf2. now exists k. }
       exists d. split.
       - intros H. apply (Hd true).
         apply Hf1 in H as [k Hk]. exists k. apply Hk.

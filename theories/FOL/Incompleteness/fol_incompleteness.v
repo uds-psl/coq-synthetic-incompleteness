@@ -129,7 +129,6 @@ Section fol.
 
 
 
-
   Section Q_incomplete.
     Hypothesis mu_universal : mu_is_universal.
 
