@@ -32,25 +32,26 @@ Section abstract.
     Proof.
       destruct fs.(P_enumerable) as [prov Hprov].
       pose proof fs.(S_discrete) as [S_eqdec]%discrete_iff.
+      destruct (is_provable fs) as (f & Hf1 & Hf2). 
 
-      unshelve evar (f : nat -\ bool).
+      unshelve evar (g : nat -\ bool).
       { intros x. unshelve eexists.
-        { intros k. 
-          refine (match prov k with Some s => _ | None => None end).
-          refine (if S_eqdec (neg (r x)) s then Some true else None). }
-        cbn. intros y1 y2 k1 k2 H1 H2.
-        destruct (prov k1), (prov k2); repeat destruct S_eqdec; try congruence. }
-
-      destruct (theta_universal f) as [c Hc]. exists c.
-      enough (fs ⊢F r c <-> fs ⊢F neg (r c)) as H.
-      { split; intros H'; apply (consistent fs (r c)); tauto. }
-      rewrite <-Hrepr. split.
-      - intros [y Hy]. rewrite <-Hc in Hy.
-        destruct Hy as [k Hk]. cbn in Hk.
-        destruct (prov k) eqn:H; try destruct S_eqdec; try congruence.
-        apply Hprov. exists k. congruence.
-      - intros [k Hk]%Hprov. exists true. rewrite <-Hc. exists k.
-        cbn. rewrite Hk. now destruct S_eqdec.
+        { intros k. exact (core (f (r x)) k). }
+        apply f. }
+      destruct (theta_universal g) as [c Hc]. 
+      assert (exists c, forall b, ~g c ▷ b) as [d Hd].
+      { eapply special_halting_diverge; try eassumption.
+        - intros d [k Hk]. apply Hrepr, Hf1. exists k.
+          apply Hk.
+        - intros d [k Hk] y Hy.
+          eapply (fs.(consistent)).
+          + apply Hrepr. eauto.
+          + apply Hf2. exists k. apply Hk. }
+      exists d. split.
+      - intros H. apply (Hd true).
+        apply Hf1 in H as [k Hk]. exists k. apply Hk.
+      - intros H. apply (Hd false).
+        apply Hf2 in H as [k Hk]. exists k. apply Hk.
     Qed.
   End halt.
 
