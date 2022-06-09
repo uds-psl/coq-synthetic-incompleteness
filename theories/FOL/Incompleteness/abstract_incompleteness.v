@@ -19,7 +19,7 @@ Section abstract.
       destruct prov_dec as [f Hf].
       enough (decidable (fun c => exists y, theta c c ▷ y)).
       { now eapply special_halting_undec. }
-      exists (fun c => f (r c)).
+      exists (fun x => f (r x)).
       unfold decider,reflects in *.
       intros x. rewrite <-Hf. apply Hrepr.
     Qed.
@@ -30,26 +30,13 @@ Section abstract.
 
     Lemma halt_incompleteness : exists n, independent fs (r n).
     Proof.
-      destruct fs.(P_enumerable) as [prov Hprov].
-      pose proof fs.(S_discrete) as [S_eqdec]%discrete_iff.
       destruct (is_provable fs) as (f & Hf1 & Hf2). 
-
-      unshelve evar (g : nat -\ bool).
-      { intros x. unshelve eexists.
-        { intros k. exact (core (f (r x)) k). }
-        apply f. }
-      destruct (theta_universal g) as [c Hc]. 
-      assert (exists c, forall b, ~g c ▷ b) as [d Hd].
+      assert (exists c, forall b, ~f (r c) ▷ b) as [d Hd].
       { eapply special_halting_diverge; try eassumption.
-        - intros d [k Hk]. apply Hrepr, Hf1. now exists k.
-        - intros d [k Hk] y Hy. eapply (fs.(consistent)).
-          + apply Hrepr. eauto.
-          + apply Hf2. now exists k. }
-      exists d. split.
-      - intros H. apply (Hd true).
-        apply Hf1 in H as [k Hk]. exists k. apply Hk.
-      - intros H. apply (Hd false).
-        apply Hf2 in H as [k Hk]. exists k. apply Hk.
+        - intros d H. firstorder.
+        - intros d H y Hy.
+          eapply (fs.(consistent) (r d)); firstorder. }
+      exists d. split; firstorder.
     Qed.
   End halt.
 
@@ -81,24 +68,11 @@ Section abstract.
       (theta c c ▷ false -> fs ⊢F neg (r c)).
 
     Lemma insep_incompleteness : exists n, independent fs (r n).
-      destruct fs.(P_enumerable) as [prov Hprov].
-      pose proof fs.(S_discrete) as [S_eqdec]%discrete_iff.
-      destruct (is_provable fs) as [Pdec HPdec].
-
-      unshelve evar (f : nat -\ bool).
-      { intros c. unshelve eexists.
-        { intros k. exact ((Pdec (r c)).(core) k). }
-        cbn. intros y1 y2 k1 k2 H1 H2.
-        apply ((Pdec (r c)).(valid) y1 y2 k1 k2 H1 H2). }
-      assert (forall b c, Pdec (r c) ▷ b -> f c ▷ b) as Hfcorr.
-      { intros b c [k Hk]. exists k. exact Hk. }
-      destruct (@recursively_separating_diverge theta theta_universal f) as [c Hc].
-      { intros [] c Hc; apply Hfcorr, HPdec, Hrepr, Hc. }
-      exists c. split.
-      - specialize (Hc true). contradict Hc.
-        apply Hfcorr, HPdec, Hc.
-      - specialize (Hc false). contradict Hc.
-        apply Hfcorr, HPdec, Hc.
+      destruct (is_provable fs) as (f & Hf1 & Hf2). 
+      assert (exists c, forall b, ~f (r c) ▷ b) as [c Hc].
+      { eapply recursively_separating_diverge; try eassumption.
+        intros [] c Hc; firstorder. }
+      exists c. split; firstorder.
     Qed.
   End insep.
   Section insep.
