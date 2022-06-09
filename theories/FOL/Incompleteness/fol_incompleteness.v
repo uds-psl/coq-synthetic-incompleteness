@@ -77,9 +77,9 @@ Section fol.
     Hypothesis T'enum : enumerable T'.
 
     Variable r : nat -> form.
-    Hypothesis Hrepr : forall c,
-      (theta c c ▷ true -> T' ⊢T r c) /\
-      (theta c c ▷ false -> T' ⊢T ¬r c).
+    Hypothesis Hrepr : 
+      (forall c, theta c c ▷ true -> T' ⊢T r c) /\
+      (forall c, theta c c ▷ false -> T' ⊢T ¬r c).
 
     Lemma fol_undecidable_strong_repr : ~decidable (fun s => T ⊢T s).
     Proof.
@@ -88,7 +88,7 @@ Section fol.
       eapply (insep_essential_undecidability) with (theta := theta) (fs := fol_fs Tenum Tconsis) (fs' := fol_fs T'enum T'consis).
       - assumption.
       - unfold extension. cbn. intros φ Hφ. now eapply WeakT.
-      - eassumption.
+      - exact Hrepr.
     Qed.
 
     Lemma fol_incomplete_strong_repr : exists n, ~T ⊢T r n /\ ~T ⊢T ¬r n.
@@ -165,10 +165,10 @@ Section fol.
       edestruct (weak_strong Hdisj Hb1 Hb2 HΣ1 HΣ2 Hφ1 Hφ2) as (ψ & Hb & HΣ & Hψ1 & Hψ2).
       eapply (@fol_undecidable_strong_repr p theta theta_universal T Tenum Tconsis (list_theory Qeq) T_Q (list_theory_enumerable Qeq)).
       instantiate (1 := fun c => ψ[(num c)..]).
-      intros c. split.
-      - intros H. exists Qeq. split; first auto.
+      split; intros c H.
+      - exists Qeq. split; first auto.
         now apply prv_intu_class.
-      - intros H. exists Qeq. split; first auto.
+      - exists Qeq. split; first auto.
         now apply prv_intu_class.
     Qed.
     Theorem Q_incomplete : exists φ, bounded 0 φ /\ Σ1 φ /\ ~@tprv _ _ _ p T φ /\ ~@tprv _ _ _ p T (¬φ).
@@ -183,10 +183,10 @@ Section fol.
       edestruct (weak_strong Hdisj Hb1 Hb2 HΣ1 HΣ2 Hφ1 Hφ2) as (ψ & Hb & HΣ & Hψ1 & Hψ2).
       edestruct (@fol_incomplete_strong_repr p theta theta_universal T Tenum Tconsis (list_theory Qeq) T_Q (list_theory_enumerable Qeq)).
       { instantiate (1 := fun c => ψ[(num c)..]). cbn. 
-        intros c. split.
-        - intros H. exists Qeq. split; first auto.
+        split; intros c H.
+        - exists Qeq. split; first auto.
           now apply prv_intu_class.
-        - intros H. exists Qeq. split; first auto.
+        - exists Qeq. split; first auto.
           now apply prv_intu_class. }
       cbn in H. exists ψ[(num x)..]. 
       repeat apply conj.

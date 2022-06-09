@@ -51,18 +51,23 @@ Notation "'partial' f " := ({| core := f; valid := _ |}) (at level 30, only prin
 Definition part_stationary Y (p : part Y) :=
   forall y k1 k2, p.(core) k1 = Some y -> k2 >= k1 -> p.(core) k2 = Some y.
 
-(* TODO rename *)
-Lemma total_part_decidable (p : part bool) : (exists y, p ▷ y) -> {y | p ▷ y}.
+Lemma totalise_part X (p : part X) : (exists y, p ▷ y) -> {y & p ▷ y}.
 Proof.
-  intro Hy. 
-  assert (exists k, (core p) k = Some true \/ (core p) k = Some false) as H.
-  { destruct Hy as ( [] & k & H); firstorder. }
-  apply mu in H as [k Hk].
-  - destruct (core p k) as [[]|] eqn:H.
-    + now exists true, k. 
-    + now exists false, k.
-    + exists false. now destruct Hk.
-  - intros x. exact _.
+  intros H.
+  assert (exists k, exists y, p.(core) k = Some y) as H'%mu by firstorder.
+  - destruct H' as [k H'']. destruct (p.(core) k) as [x|] eqn:Heq.
+    + firstorder.
+    + exfalso. now destruct H''.
+  - intros k. destruct (p.(core) k) as [x|] eqn:H''.
+    + left. eauto.
+    + right. now intros [y Hy].
+Qed.
+Notation "A -\ B" := (A -> part B) (at level 30).
+
+
+Lemma totalise X Y (f : X -\ Y) : (forall x, exists y, f x ▷ y) -> forall x, {y & f x ▷ y}.
+Proof.
+  intros H x. apply totalise_part, H.
 Qed.
 
 Lemma part_functional {X : Type} (p : part X) (x y : X) : p ▷ x -> p ▷ y -> x = y.
@@ -72,5 +77,6 @@ Proof.
 Qed.
 
 
-Notation "A -\ B" := (A -> part B) (at level 30).
+
+
 

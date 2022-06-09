@@ -19,6 +19,7 @@ Notation "I ⊨=L T" := (forall psi, List.In psi T -> I ⊨= psi) (at level 20).
 (* Notation for explicitely giving model *)
 Notation "I ; rho '⊨' phi" := (@sat _ _ _ I _ rho phi) (at level 20, rho at next level).
 
+Locate nat_is_Q_model.
 
 Section lemmas.
   Existing Instance PA_preds_signature.

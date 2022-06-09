@@ -22,41 +22,20 @@ Arguments consistent {S neg} _ _ _ _.
 Notation "fs ⊢F s" := (fs.(P) s) (at level 30).
 Notation "fs ⊬F s" := (~fs.(P) s) (at level 30).
 
-(*Definition complete {S : Type} {neg : S -> S} (fs : FS S neg) :=
-   forall s, fs ⊢F s \/ fs ⊢F neg s.*)
-
 Definition extension {S : Type} {neg : S -> S} (fs1 fs2 : FS S neg) :=
   forall s, fs1 ⊢F s -> fs2 ⊢F s.
 
 Section facts.
   Context {S : Type} {neg : S -> S} (fs : FS S neg).
 
+  Definition weakly_represents (P : nat -> Prop) (r : nat -> S) :=
+    forall x, P x <-> fs ⊢F r x.
+  Definition strongly_separates (P1 P2 : nat -> Prop) (r : nat -> S) :=
+    (forall x, P1 x -> fs ⊢F r x) /\
+    (forall x, P2 x -> fs ⊢F neg (r x)).
+
   Definition complete := forall s, fs ⊢F s \/ fs ⊢F neg s.
   Definition independent s := fs ⊬F s /\ fs ⊬F neg s.
-
-  Lemma neg_no_fixpoint_provable : forall s, fs ⊢F s -> s <> neg s.
-  Proof.
-    intros s Hs Heq. eapply (consistent fs s); congruence.
-  Qed.
-  Lemma neg_no_fixpoint_refutable : forall s, fs ⊢F neg s -> s <> neg s.
-  Proof.
-    intros s Hs Heq. apply (consistent fs s); congruence.
-  Qed.
-
-  Lemma undeepen_provability s : complete -> fs ⊬F s -> fs ⊢F neg s.
-  Proof.
-    firstorder.
-  Qed.
-  Lemma deepen_provability s : fs ⊢F neg s -> fs ⊬F s.
-  Proof.
-    eauto using consistent.
-  Qed.
-
-  Lemma deep_provability_iff s : complete -> (fs ⊢F neg s <-> fs ⊬F s).
-  Proof.
-    firstorder using undeepen_provability, deepen_provability.
-  Qed.
-
   Lemma is_provable : exists f : S -\ bool, 
     (forall s, fs ⊢F s <-> f s ▷ true) /\
     (forall s, fs ⊢F neg s <-> f s ▷ false).
@@ -64,53 +43,48 @@ Section facts.
     destruct fs.(P_enumerable) as [prov Hprov].
     pose proof fs.(S_discrete) as [S_eqdec]%discrete_iff.
     unshelve eexists.
-    1: intros s; unshelve econstructor.
-    { intros k.  
-      refine (match prov k with Some s' => _ | None => None end).
-      refine (if S_eqdec s s' then _ else _).
-      - exact (Some true).
-      - refine (if S_eqdec (neg s) s' then Some false else None). }
-    { cbn. intros y1 y2 k1 k2 H1 H2.
+    { intros s. unshelve econstructor.
+      { intros k.
+        refine (match prov k with Some s' => _ | None => None end).
+        refine (if S_eqdec s s' then _ else _).
+        - exact (Some true).
+        - refine (if S_eqdec (neg s) s' then Some false else None). }
+      intros y1 y2 k1 k2 H1 H2.
       destruct (prov k1) as [s1|] eqn:Hk1,
                (prov k2) as [s2|] eqn:Hk2.
       all: cbn in *; try congruence.
       repeat destruct S_eqdec; try congruence; subst.
-      - edestruct fs.(consistent); apply Hprov.
-        + exists k1. eassumption.
-        + exists k2. assumption.
-      - edestruct fs.(consistent); apply Hprov.
-        + exists k2. eassumption.
-        + exists k1. assumption. }
+      - destruct (@fs.(consistent) s1); apply Hprov; eauto.
+      - destruct (@fs.(consistent) s2); apply Hprov; eauto. }
     cbn. split; intros s; split.
     - intros [k Hk]%Hprov. exists k. cbn. rewrite Hk.
       destruct S_eqdec; congruence.
     - intros [k Hk]. cbn in Hk.
+      apply Hprov. exists k.
       destruct (prov k) as [s'|] eqn:H. 2: discriminate.
-      repeat destruct S_eqdec; try discriminate.
-      apply Hprov. exists k. now subst.
+      repeat destruct S_eqdec; congruence.
     - intros [k Hk]%Hprov. exists k. cbn. rewrite Hk.
       repeat destruct S_eqdec; try congruence.
-      edestruct neg_no_fixpoint_refutable.
-      { apply Hprov. exists k. apply Hk. }
-      assumption.
+      edestruct (@fs.(consistent) s).
+      all: apply Hprov; exists k; congruence.
     - intros [k Hk]. cbn in Hk.
+      apply Hprov. exists k.
       destruct (prov k) as [s'|] eqn:H. 2: discriminate.
-      repeat destruct S_eqdec; try discriminate.
-      apply Hprov. exists k. now subst.
+      repeat destruct S_eqdec; congruence.
   Qed.
-
-  Lemma provable_decidable : complete -> decidable fs.(P).
+  Lemma complete_decidable : complete -> decidable fs.(P).
   Proof.
-    intros complete.
-    destruct is_provable as [f Hf].
-    apply decidable_iff. constructor. intros s.
-    destruct (@total_part_decidable (f s)) as [[] H].
-    - destruct (complete s) as [Hs|Hs].
-      + exists true. firstorder.
-      + exists false. firstorder.
-    - firstorder.
-    - firstorder using deep_provability_iff.
+    intros complete. destruct is_provable as [f Hf].
+    assert (forall x, exists b, f x ▷ b) as Htotal.
+    { intros x. destruct (complete x) as [H|H].
+      - exists true. now apply Hf.
+      - exists false. now apply Hf. }
+    exists (fun x => projT1 (totalise Htotal x)).
+    intros x. destruct totalise as [[] Hb]; split; cbn.
+    - easy.
+    - intros _. now apply Hf.
+    - intros H%Hf. eapply part_functional; eassumption.
+    - discriminate.
   Qed.
-
 
 End facts.

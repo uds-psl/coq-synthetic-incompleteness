@@ -57,7 +57,7 @@ Section ct.
   (* This can be used to show special_halting_undec, however this is tedious *)
 
   (* Note: function might be partial, non-conventional definition *)
-  Definition strongly_separates (P1 P2 : nat -> Prop)  (f : nat -\ bool) :=
+  Definition recursively_separates (P1 P2 : nat -> Prop)  (f : nat -\ bool) :=
     (forall x, P1 x -> f x ▷ true) /\
     (forall x, P2 x -> f x ▷ false).
 
