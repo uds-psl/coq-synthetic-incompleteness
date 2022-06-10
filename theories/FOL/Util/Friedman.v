@@ -1,4 +1,3 @@
-(** ** Eliminating excluded middle *)
 
 Require Import List Lia.
 From Undecidability.FOL.Util Require Import Syntax Syntax_facts FullTarski FullTarski_facts FullDeduction_facts FullDeduction.

@@ -70,6 +70,9 @@ Proof.
   - apply erase_ra_rel. exists k1. eassumption.
   - apply erase_ra_rel. exists k2. eassumption.
 Defined.
+
+(** ** Church's thesis for mu-recursive functions *)
+
 Definition mu_is_universal := forall f, exists c, forall x y, f x ▷ y <-> mu_step c x ▷ y.
 Section mu.
   Hypothesis mu_universal : mu_is_universal.

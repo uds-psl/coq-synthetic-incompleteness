@@ -1,4 +1,3 @@
-(** ** Tarski Semantics *)
 
 Require Import Undecidability.FOL.Util.Syntax.
 Export FullSyntax.

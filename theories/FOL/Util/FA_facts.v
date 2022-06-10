@@ -445,7 +445,6 @@ End FA_models.
 Arguments iμ {_ _} _.
 
 
-(** ** The standard model *)
 
 Section StdModel.
 

@@ -1,4 +1,3 @@
-(** ** Reduction from H10 *)
 
 Require Import Undecidability.Synthetic.Definitions Undecidability.Synthetic.Undecidability.
 From Undecidability.FOL.Util Require Import Syntax Syntax_facts FullTarski FullTarski_facts FullDeduction_facts FullDeduction FA_facts.

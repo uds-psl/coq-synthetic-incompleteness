@@ -13,6 +13,7 @@ From Undecidability.FOL.Proofmode Require Import Theories ProofMode Hoas.
 Require Import String.
 Open Scope string_scope.
 
+(** * First-order logic *)
 
 (* Notation for satisfying list theories *)
 Notation "I ⊨=L T" := (forall psi, List.In psi T -> I ⊨= psi) (at level 20).

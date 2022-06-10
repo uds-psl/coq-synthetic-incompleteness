@@ -1,4 +1,3 @@
-(** ** Reduction from PCP to semantic entailment in finite ZF *)
 
 Require Import Undecidability.FOL.Util.Syntax.
 Require Import Undecidability.FOL.Util.Syntax_facts.

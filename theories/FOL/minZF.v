@@ -1,5 +1,3 @@
-(** * ZF set theory without Skolem function symbols *)
-(** ** Axiomatisations using membership and equality *)
 
 Require Import Undecidability.FOL.Util.Syntax.
 Require Import Undecidability.FOL.Util.FullTarski.

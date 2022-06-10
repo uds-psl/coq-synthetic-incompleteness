@@ -34,6 +34,8 @@ Proof.
   inversion H2.
 Qed.
 
+(** * Partial functions *)
+
 Definition core_valid {Y : Type} (core : nat -> option Y) :=
   forall y1 y2 k1 k2, core k1 = Some y1 -> core k2 = Some y2 -> y1 = y2.
 

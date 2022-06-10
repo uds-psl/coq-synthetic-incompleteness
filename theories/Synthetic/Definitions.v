@@ -1,5 +1,3 @@
-(** * Synthetic Computability *)
-(** ** Decidability, enumerability, reductions *)
 
 (* a decision problem on a domain X is mechanized by a predicate P : X -> Prop *)
   

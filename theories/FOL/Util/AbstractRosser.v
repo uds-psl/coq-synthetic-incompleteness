@@ -1,4 +1,3 @@
-(** * Abstract Incompleteness using Rosser's Trick *)
 From Undecidability.Synthetic Require Import Definitions Undecidability. From Undecidability.Synthetic Require Import DecidabilityFacts EnumerabilityFacts ReducibilityFacts.
 From Undecidability.Synthetic Require Import ListEnumerabilityFacts MoreEnumerabilityFacts.
 From Undecidability.Shared Require Import Dec embed_nat.

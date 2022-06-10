@@ -2,11 +2,14 @@ From Undecidability.FOL.Incompleteness Require Import utils formal_systems churc
 
 From Undecidability.Synthetic Require Import DecidabilityFacts.
 
+
 Section abstract.
   Variable (theta : nat -> nat -\ bool).
   Hypothesis theta_universal : is_universal theta.
 
   Context {S : Type} {neg : S -> S} (fs : FS S neg).
+
+  (** ** Folklore proof using soundness *)
 
   Lemma weakly_representable_decidable (p : nat -> Prop) :
     decidable (fs.(P)) -> 
@@ -65,6 +68,8 @@ Section abstract.
         intros Hc. eapply (@fs.(consistent) (r c)); firstorder.
     Qed.
   End insep.
+
+  (** ** Strengthened proof using consistency *)
 
   Section insep.
     Variable r : nat -> S.

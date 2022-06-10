@@ -1,4 +1,3 @@
-(** * Summary File *)
 
 From Undecidability.FOL.Util Require Import Syntax_facts FullDeduction FullDeduction_facts FullTarski FullTarski_facts.
 From Undecidability.Synthetic Require Import Definitions Undecidability.
@@ -15,9 +14,7 @@ Local Unset Strict Implicit.
 
 
 
-(** ** Section 3 *)
 
-(** *** Decision problems on first-order axiomatisations *)
 
 Existing Instance falsity_on.
 
@@ -39,14 +36,12 @@ Section FixSignature.
 
 
 
-  (** *** Definition 5 : reductions to axiomatisations combine Tarski semantics and intuitionistic ND *)
 
   Definition treduction X (f : X -> form) (P : X -> Prop) T :=
     reduction f P (tvalid T) /\ reduction f P (tprv_intu T).
 
 
 
-  (** *** Fact 7 : if a non-trivial problem reduces to T, then T is consistent *)
 
   Fact reduction_consistency {p : peirce} X (f : X -> form) (P : X -> Prop) T :
     reduction f P (tprv T) -> (exists x, ~ P x) -> ~ T ⊢T ⊥.
@@ -107,7 +102,6 @@ Section FixSignature.
 
 
     
-    (** *** Post's theorem: bi-enumerable logically decidable predicates over discrete domain are decidable *)
 
     Definition mu (p : nat -> Prop) :
       (forall x, dec (p x)) -> ex p -> sig p.
@@ -131,7 +125,6 @@ Section FixSignature.
 
 
 
-    (** *** Fact 9 : consistent complete theories are decidable for closed formulas *)
 
     Definition stripneg `{falsity_flag} (phi : form) : option form :=
       match phi with 
@@ -193,7 +186,6 @@ Section FixSignature.
 
 
 
-    (** *** Consequence : problems reducing to complete theories are decidable *)
 
     Fact complete_reduction X (P : X -> Prop) (f : X -> form) :
       (~ T ⊢TC ⊥) -> complete -> reduction f P (tprv_class T) -> (forall x, bounded 0 (f x)) -> decidable P.
@@ -209,7 +201,6 @@ Section FixSignature.
 
 
 
-  (** *** Theorem 10 : undecidability transports to extended axiomatisations satisfied by standard models *)
   
   Section Reduction.
 
@@ -243,7 +234,6 @@ Section FixSignature.
 
 
 
-    (** *** Theorem 10 : variant for classical deduction, using LEM *)
 
     Definition LEM := forall P, P \/ ~ P.
     
@@ -259,7 +249,6 @@ Section FixSignature.
 
 
 
-  (** *** Fact 11 : reductions from finite axiomatisations to the Entscheidungsproblem *)
 
   Definition list_theory (A : list form) :=
     fun phi => In phi A.
@@ -280,7 +269,6 @@ Section FixSignature.
   Qed.
 
 
-  (** *** Fact 12 : indirect reductions between axiomatisations *)
   
   Lemma red_prv_prv {p : peirce} A T : 
     T <<= (prv A) -> prv A ⪯ tprv T.
@@ -359,9 +347,7 @@ End FixSignature.
 
 
 
-(** ** Main results *)
 
-(** *** Theorem 26 : H10 reduces to Q', Q, and PA *)
 
 From Undecidability.FOL Require Import PA Reductions.H10p_to_FA FA_facts.
 From Undecidability.H10 Require Import H10p H10p_undec.
@@ -428,7 +414,6 @@ Qed.
 
 
 
-(** *** Theorem 27 : all extensions of Q' satisfied by the standard model are incompletene, using LEM *)
 
 (* We first need to show the PA signature discrete and enumerable *)
 
@@ -474,7 +459,6 @@ Qed.
 
 
 
-(** *** Fact 28 : all axiomatisations satisfied by the standard model are undecidable *)
 
 Fact undec_standard_prv (T : form -> Prop) :
   interp_nat ⊨=T T -> H10p ⪯ @tprv _ _ _ intu T.
@@ -499,7 +483,6 @@ Proof.
 Qed.
 
 
-(** *** Theorem 43 : PCP reduces to Z', Z, and ZF, assuming standard models *)
 
 From Undecidability.FOL.Reductions Require Import PCPb_to_ZFeq PCPb_to_ZF PCPb_to_ZFD.
 From Undecidability.FOL Require Import Util.Aczel_CE Util.ZF_model ZF.
@@ -559,7 +542,6 @@ Qed.
 
 
 
-(** *** Corollary 44 : the standard models required by the previous theorem can be constructed with CE and TD *)
 
 Lemma CE_undec_Z' :
   CE -> treduction solvable PCPb Z'.
@@ -597,7 +579,6 @@ Qed.
 
 
 
-(** *** Theorem 45 : all extensions of Z' satisfied by a standard model are incompletene, using LEM *)
 
 (* We first need to show the ZF signature discrete and enumerable *)
 
@@ -642,7 +623,6 @@ Qed.
 
 
 
-(** *** Theorem 53 : we obtain the same reductions for set theory only formulated with equality and membership *)
 
 From Undecidability.FOL Require Import minZF PCPb_to_minZF PCPb_to_minZFeq.
 
@@ -670,7 +650,6 @@ Qed.
 
 
 
-(** *** Theorem 58 : FOL with a single binary relation symbol is undecidable *)
 
 From Undecidability.FOL Require Import sig_bin binZF PCPb_to_binZF binZF_undec.
 

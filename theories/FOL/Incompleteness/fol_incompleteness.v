@@ -12,6 +12,8 @@ From Equations Require Import Equations.
 Require Import String List.
 
 
+(** * Incompleteness of first-order logic *)
+
 Lemma enumerable_PA_funcs : enumerable__T PA_funcs.
 Proof.
   cbn. exists (fun k => match k with
@@ -105,6 +107,7 @@ Section fol.
 
 
 
+  (** ** Weak representability from DPRM *)
   Section Q_weakly_represents.
     Existing Instance intu.
     Hypothesis mu_universal : mu_is_universal.
@@ -129,6 +132,7 @@ Section fol.
 
 
 
+  (** ** Q is essentially incomplete and essentially undecidable *)
   Section Q_incomplete.
     Hypothesis mu_universal : mu_is_universal.
 

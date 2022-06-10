@@ -7,6 +7,8 @@ From Undecidability.FOL.Proofmode Require Import Theories ProofMode Hoas.
 From Undecidability.FOL.Incompleteness Require Import formal_systems fol qdec.
 
 
+(** * Weak representability implies strong separability *)
+
 From Equations Require Import Equations DepElim.
 Require Import String List.
 Open Scope string_scope.

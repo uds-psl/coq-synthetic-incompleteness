@@ -1,4 +1,3 @@
-(** ** Conservativity Results for ZF *)
 
 From Undecidability.FOL.Util
      Require Import FullTarski_facts Syntax_facts FullDeduction_facts.

@@ -16,7 +16,9 @@ Require Import Undecidability.Shared.Libs.DLW.Vec.vec.
 
 Require Import String.
 Open Scope string_scope.
-(* copied from syntax_facts *) 
+
+(** ** Arithmetical hierarchy *)
+(** *** Q-decidability *)
 Section Qdec.
   Existing Instance PA_preds_signature.
   Existing Instance PA_funcs_signature.
@@ -712,6 +714,8 @@ Section Qdec.
 
   
 End Qdec.
+
+(** *** Sigma1 completeness *)
 
 Section Sigma1.
   Existing Instance PA_preds_signature.
