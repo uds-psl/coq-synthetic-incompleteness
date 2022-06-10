@@ -6,7 +6,8 @@ Local Set Implicit Arguments.
 Local Unset Strict Implicit.
 
 
-(** * Church's thesis *)
+
+(** ** Church's thesis *)
 
 Definition is_universal {Y : Type} (theta : nat -> nat -\ Y) :=
   forall f : nat -\ Y, exists c, forall x y, f x ▷ y <-> theta c x ▷ y.
@@ -15,7 +16,9 @@ Section ct.
   Variable (theta : nat -> nat -\ bool).
   Hypothesis theta_universal : is_universal theta.
 
-  Lemma special_halting_undec : ~decidable (fun c => exists y, theta c c ▷ y).
+  Definition special_halting : nat -> Prop := fun x => exists y, theta x x ▷ y.
+
+  Lemma special_halting_undec : ~decidable special_halting.
   Proof.
     intros [f Hf].
     unshelve evar (g: nat -\ bool).
@@ -32,8 +35,8 @@ Section ct.
 
 
   Lemma special_halting_diverge (f : nat -\ bool) :
-    (forall c, f c ▷ true -> exists y, theta c c ▷ y) -> 
-    (forall c, f c ▷ false -> forall y, ~theta c c ▷ y) -> 
+    (forall c, f c ▷ true -> special_halting c) -> 
+    (forall c, f c ▷ false -> ~special_halting c) -> 
     exists c, forall y, ~f c ▷ y.
   Proof.
     intros H1 H2.
@@ -52,7 +55,7 @@ Section ct.
       cbn in Hk. destruct (core (f c) k) as [[]|] eqn:Hf; try discriminate.
       enough (true = false) by discriminate. 
       apply (@part_functional _ (f c)); firstorder.
-    - eapply (H2 c H true), Hc.
+    - eapply (H2 c H). exists true. apply Hc.
       destruct H as [k Hk]. exists k. 
       cbn. now rewrite Hk.
   Qed.

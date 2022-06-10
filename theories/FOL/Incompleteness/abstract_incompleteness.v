@@ -23,7 +23,7 @@ Section abstract.
 
   Section halt.
     Variable (r : nat -> S).
-    Hypothesis Hrepr : weakly_represents fs (fun x => exists y, theta x x ▷ y) r.
+    Hypothesis Hrepr : weakly_represents fs (special_halting theta) r.
 
     Lemma halt_undecidability : ~decidable fs.(P).
     Proof.
@@ -38,7 +38,7 @@ Section abstract.
   End halt.
   Section halt.
     Variable (r : nat -> S).
-    Hypothesis Hrepr : weakly_represents fs (fun x => exists y, theta x x ▷ y) r.
+    Hypothesis Hrepr : weakly_represents fs (special_halting theta) r.
 
     Lemma halt_incompleteness : exists n, independent fs (r n).
     Proof.
@@ -46,7 +46,7 @@ Section abstract.
       assert (exists c, forall b, ~f (r c) ▷ b) as [d Hd].
       { eapply special_halting_diverge; try eassumption.
         - intros d H. firstorder.
-        - intros d H y Hy.
+        - intros d H [y Hy].
           eapply (fs.(consistent) (r d)); firstorder. }
       exists d. split; firstorder.
     Qed.

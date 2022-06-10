@@ -725,6 +725,7 @@ Section Sigma1.
 
 
 
+  (** # <a id="Sigma1" /> #*)
   Inductive Σ1 : form -> Prop :=
   | Sigma_exists : forall α, Σ1 α -> Σ1 (∃ α)
   | Sigma_Delta : forall α, Qdec α -> Σ1 α.
@@ -888,6 +889,7 @@ Section Sigma1.
     - cbn. invert_bounds. replace (S (n + k)) with (n + (S k)) by lia. now apply IHn. 
   Qed.
 
+  (** # <a id="Sigma1_compression" /> #*)
   Lemma Σ1_compression φ n : bounded n φ -> Σ1 φ -> exists ψ, Qdec ψ /\ bounded (S n) ψ /\ Qeq ⊢ φ <~> ∃ψ.
   Proof.
     intros Hb (k & ψ & HΔ & ->)%Σ1_exist_times.
@@ -902,6 +904,7 @@ Section Sigma1completeness.
   Existing Instance intu.
 
   (* substitution here as its needed for the induction *)
+  (** # <a id="Sigma1_completeness" /> #*)
   Lemma Σ1_completeness φ ρ : Σ1 φ -> bounded 0 φ -> interp_nat; ρ ⊨ φ -> Qeq ⊢ φ.
   Proof.
     enough (forall ρ, Σ1 φ -> bounded 0 φ[ρ] -> interp_nat ⊨= φ[ρ] -> Qeq ⊢ φ[ρ]).
@@ -930,6 +933,7 @@ Section Sigma1completeness.
   Qed.
 
 
+  (** # <a id="Sigma1_witness" /> #*)
   Lemma Σ1_witness φ : Σ1 φ -> bounded 1 φ -> Qeq ⊢ ∃φ -> exists x, Qeq ⊢ φ[(num x)..].
   Proof.
     intros Hb HΣ Hφ. eapply Q_sound_intu with (rho := fun _ => 0) in Hφ as [x Hx].
