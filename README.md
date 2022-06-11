@@ -1,4 +1,5 @@
-# Gödel's Theorem Without Tears - Essential Incompleteness in Synthetic Computability
+# Gödel's Theorem Without Tears 
+### Essential Incompleteness in Synthetic Computability
 
 This repository contains the Coq code accompanying [Benjamin Peters' Bachelor's thesis](TODO) ([mirror](TODO)) (see also [here](TODO)) at the [Programming Systems Lab](TODO) at [Saarland University](TODO) as part of a fork of the [Coq library of undecidability proofs](TODO).
 
@@ -47,7 +48,7 @@ opam install . --deps-only
 The library is compatible with Coq's compiled interfaces ([`vos`](https://coq.inria.fr/refman/practical-tools/coq-commands.html#compiled-interfaces-produced-using-vos)) for quick infrastructural access.
 
 - `make vos` builds compiled interfaces for the library
-- `make FOL/Incompleteness/fol_incompleteness.vos FOL/Incompleteness/completeness.vos` builds compiled interfaces for the library
+- `make FOL/Incompleteness/fol_incompleteness.vos FOL/Incompleteness/completeness.vos` builds compiled interfaces for the incompleteness results
 - `make vok` checks correctness of the library 
 
 ### Troubleshooting
@@ -60,6 +61,4 @@ To avoid this, you can use a non-local opam switch, i.e. `opam switch create 4.0
 #### Coq version
 
 Be careful that this branch only compiles under `Coq 8.13`. If you want to use a different Coq version you have to change to a different branch.
-Due to compatibility issues, not every branch contains exactly the same problems. 
-We recommend to use the newest branch if possible.
 
