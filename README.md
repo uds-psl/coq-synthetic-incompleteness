@@ -1,7 +1,7 @@
 # Gödel's Theorem Without Tears 
 ### Essential Incompleteness in Synthetic Computability
 
-This repository contains the Coq code accompanying [Benjamin Peters' Bachelor's thesis](TODO) ([mirror](TODO)) (see also [here](TODO)) at the [Programming Systems Lab](TODO) at [Saarland University](TODO) as part of a fork of the [Coq library of undecidability proofs](TODO).
+This repository contains the Coq code accompanying Benjamin Peters' [Bachelor's thesis](TODO) ([mirror](TODO)) (see also [here](TODO)) at the [Programming Systems Lab](TODO) at [Saarland University](TODO) as part of a fork of the [Coq library of undecidability proofs](TODO).
 
 The documentation can found [here](TODO) ([mirror](TODO)).
 
