@@ -1,24 +1,22 @@
 # Gödel's Theorem Without Tears 
 ### Essential Incompleteness in Synthetic Computability
 
-This repository contains the Coq code accompanying Benjamin Peters' [Bachelor's thesis](TODO) (see also [here](TODO)) at the [Programming Systems Lab](TODO) at [Saarland University](TODO) as part of a fork of the [Coq library of undecidability proofs](TODO).
+This repository contains the Coq code accompanying [Benjamin Peters'](https://www.ps.uni-saarland.de/~peters/) [Bachelor's thesis](https://www.ps.uni-saarland.de/~peters/bachelor.php) (download [here](https://www.ps.uni-saarland.de/~peters/bachelor/thesis.pdf)) at the [Programming Systems Lab](https://www.ps.uni-saarland.de) at [Saarland University](https://www.uni-saarland.de/start.html) as part of a fork of the [Coq library of undecidability proofs](https://github.com/uds-psl/coq-library-undecidability).
 
-The documentation can found [here](TODO).
+The documentation can found [here](https://www.ps.uni-saarland.de/~peters/bachelor/documentation/toc.html).
 
-The development can be found at [`theories/FOL/Incompleteness/`](TODO) and comprises the following files:
+The development can be found at [`theories/FOL/Incompleteness/`](https://github.com/uds-psl/coq-synthetic-incompleteness/tree/bachelor/theories/FOL/Incompleteness) and comprises the following files:
 - `utils.v`: Utilities for vectors and a definition of partial functions
-- `churchs_thesis.v`: Definition of Church's thesis and undecidability/uncomputability results
-- `ra.v`: Enumerability and discreteness of mu-recursive functions
+- `epf.v`: Definition of Church's thesis and undecidability/uncomputability results
 - `dprm.v`: Church's thesis for mu-recursive functions
+    - `recalg.v`: Enumerability and discreteness of mu-recursive functions (by [Johannes Hostert](https://www.ps.uni-saarland.de/~hostert/))
 - `formal_systems.v`: Abstract formal systems
 - `abstract_incompleteness.v`: Incompleteness of abstract formal systems
-- `fol.v`: Utilities for first-order logic and [first-order proofmode](TODO) integration 
+- `fol.v`: Utilities for first-order logic and [first-order proofmode](https://github.com/mark-koch/firstorder-proof-mode) integration 
 - `qdec.v`: Q-decidability and Sigma1-completeness
-- `repr.v`: Rosser's trick to show that weak representability implies strong separability in Robinson arihtmetic
-    - `completeness.v`: Illustrative proof using completeness
+- `weak_strong.v`: Rosser's trick to show that weak representability implies strong separability in Robinson arithmetic
+    - `completeness.v`: Illustrative proof of strong separability using completeness
 - `fol_incompleteness.v`: Essential incompleteness of Robinson arithmetic
-
-TODO: rename files
 
 
 
