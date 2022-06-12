@@ -13,7 +13,7 @@ The development can be found at [`theories/FOL/Incompleteness/`](https://github.
 - `formal_systems.v`: Abstract formal systems
 - `abstract_incompleteness.v`: Incompleteness of abstract formal systems
 - `fol.v`: Utilities for first-order logic and [first-order proofmode](https://github.com/mark-koch/firstorder-proof-mode) integration 
-- `qdec.v`: Q-decidability and Sigma1-completeness
+- `qdec.v`: Q-decidability and Σ1-completeness
 - `weak_strong.v`: Rosser's trick to show that weak representability implies strong separability in Robinson arithmetic
     - `completeness.v`: Illustrative proof of strong separability using completeness
 - `fol_incompleteness.v`: Essential incompleteness of Robinson arithmetic

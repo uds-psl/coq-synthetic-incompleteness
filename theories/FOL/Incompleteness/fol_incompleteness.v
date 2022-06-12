@@ -29,6 +29,7 @@ Proof.
   + now exists 3.
 Qed.
 
+(* first-order logic with an enumerable theory is a formal system *)
 Section fol_fs.
   Existing Instance PA_funcs_signature.
   Existing Instance PA_preds_signature.
@@ -36,7 +37,7 @@ Section fol_fs.
 
   Definition fol_fs (T : theory) (Tenum : enumerable T) (Tconsis : ~T ⊢T ⊥) : FS form (fun φ => ¬φ).
   Proof.
-    apply mkFS with (P := fun φ => T ⊢T φ).
+    apply mkFS with (fprv := fun φ => T ⊢T φ).
     - apply form_discrete.
     - unshelve eapply tprv_enumerable.
       + apply enumerable_PA_funcs.
@@ -63,7 +64,33 @@ Section fol.
   Existing Instance PA_funcs_signature.
   Existing Instance PA_preds_signature.
 
+  (** ** Weak representability from DPRM *)
+  Section Q_weakly_represents.
+    Existing Instance intu.
+    Hypothesis mu_universal : mu_is_universal.
 
+    Variable P : nat -> Prop.
+    Hypothesis Penum : enumerable P. 
+    Lemma Q_weak_repr : exists φ, bounded 1 φ /\ Σ1 φ /\ forall x, P x <-> Qeq ⊢ φ[(num x)..].
+    Proof.
+      destruct mu_recursive_definable with (P := P) (peirc := intu) as (φ & Hb & HΣ & Hr).
+      { now apply mu_semi_decidable_enumerable. }
+      exists φ. do 2 (split; first assumption).
+      intros x. erewrite Hr. instantiate (1 := fun _ => 0). split.
+      - intros H. eapply Σ1_completeness.
+        + now apply Σ1_subst.
+        + eapply subst_bound; last eassumption.
+          intros [|n] Hn; last lia. apply num_bound.
+        + now rewrite <-sat_single_nat.
+      - intros H. rewrite sat_single_nat. eapply soundness; first eassumption.
+        apply nat_is_Q_model.
+    Qed.
+
+  End Q_weakly_represents.
+
+  (** ** Q is essentially incomplete and essentially undecidable *)
+
+  (* Any theory that strongly separates two recursively inseparable predicates is incompelte *)
   Section incomplete_strong_repr.
     Hypothesis (p : peirce).
 
@@ -108,33 +135,9 @@ Section fol.
 
 
 
-  (** ** Weak representability from DPRM *)
-  Section Q_weakly_represents.
-    Existing Instance intu.
-    Hypothesis mu_universal : mu_is_universal.
-
-    Variable P : nat -> Prop.
-    Hypothesis Penum : enumerable P. 
-    Lemma Q_weak_repr : exists φ, bounded 1 φ /\ Σ1 φ /\ forall x, P x <-> Qeq ⊢ φ[(num x)..].
-    Proof.
-      destruct mu_recursive_definable with (P := P) (peirc := intu) as (φ & Hb & HΣ & Hr).
-      { now apply mu_semi_decidable_enumerable. }
-      exists φ. do 2 (split; first assumption).
-      intros x. erewrite Hr. instantiate (1 := fun _ => 0). split.
-      - intros H. eapply Σ1_completeness.
-        + now apply Σ1_subst.
-        + eapply subst_bound; last eassumption.
-          intros [|n] Hn; last lia. apply num_bound.
-        + now rewrite <-sat_single_nat.
-      - intros H. rewrite sat_single_nat. eapply soundness; first eassumption.
-        apply nat_is_Q_model.
-    Qed.
-
-  End Q_weakly_represents.
 
 
-
-  (** ** Q is essentially incomplete and essentially undecidable *)
+  (* Q is essentially incomplete and essentially undecidable *)
   Section Q_incomplete.
     Hypothesis mu_universal : mu_is_universal.
 
@@ -146,26 +149,12 @@ Section fol.
     Hypothesis Tenum : enumerable T.
     Hypothesis Tconsis : ~@tprv _ _ _ p T ⊥.
 
-    Lemma theta_c_c_enumerable (theta : nat -> nat -\ bool) b : enumerable (fun c => theta c c ▷ b).
-    Proof. 
-      apply semi_decidable_enumerable.
-      { exists (fun n => Some n). intros n. now exists n. }
-      exists (fun c k => match core (theta c c) k, b with
-                         | Some true, true => true
-                         | Some false, false => true
-                         | _, _ => false
-                         end).
-     intros c. split; intros [k Hk]; exists k.
-     - rewrite Hk. destruct b; congruence.
-     - destruct (core _ _) as [[]|], b; congruence.
-    Qed. 
-
     Theorem Q_undecidable : ~decidable (@tprv _ _ _ p T).
     Proof.
       assert (exists f : nat -> nat -\ bool, is_universal f) as [theta theta_universal].
-      { apply ct_nat_bool, CTmu, mu_universal. }
-      destruct (@Q_weak_repr mu_universal (fun c => theta c c ▷ true) (theta_c_c_enumerable theta true)) as (φ1 & Hb1 & HΣ1 & Hφ1).
-      destruct (@Q_weak_repr mu_universal (fun c => theta c c ▷ false) (theta_c_c_enumerable theta false)) as (φ2 & Hb2 & HΣ2 & Hφ2).
+      { apply epf_nat_bool, EPFmu, mu_universal. }
+      destruct (@Q_weak_repr mu_universal (fun c => theta c c ▷ true) (theta_self_return_enumerable theta true)) as (φ1 & Hb1 & HΣ1 & Hφ1).
+      destruct (@Q_weak_repr mu_universal (fun c => theta c c ▷ false) (theta_self_return_enumerable theta false)) as (φ2 & Hb2 & HΣ2 & Hφ2).
       assert (forall c, theta c c ▷ true -> theta c c ▷ false -> False) as Hdisj.
       { intros c Ht Hf. enough (true = false) by discriminate. eapply part_functional; eassumption. }
       edestruct (weak_strong Hdisj Hb1 Hb2 HΣ1 HΣ2 Hφ1 Hφ2) as (ψ & Hb & HΣ & Hψ1 & Hψ2).
@@ -181,10 +170,10 @@ Section fol.
     Theorem Q_incomplete : exists φ, bounded 0 φ /\ Σ1 φ /\ ~@tprv _ _ _ p T φ /\ ~@tprv _ _ _ p T (¬φ).
     Proof. 
       assert (exists f : nat -> nat -\ bool, is_universal f) as [theta theta_universal].
-      { apply ct_nat_bool, CTmu, mu_universal. }
+      { apply epf_nat_bool, EPFmu, mu_universal. }
 
-      destruct (@Q_weak_repr mu_universal (fun c => theta c c ▷ true) (theta_c_c_enumerable theta true)) as (φ1 & Hb1 & HΣ1 & Hφ1).
-      destruct (@Q_weak_repr mu_universal (fun c => theta c c ▷ false) (theta_c_c_enumerable theta false)) as (φ2 & Hb2 & HΣ2 & Hφ2).
+      destruct (@Q_weak_repr mu_universal (fun c => theta c c ▷ true) (theta_self_return_enumerable theta true)) as (φ1 & Hb1 & HΣ1 & Hφ1).
+      destruct (@Q_weak_repr mu_universal (fun c => theta c c ▷ false) (theta_self_return_enumerable theta false)) as (φ2 & Hb2 & HΣ2 & Hφ2).
       assert (forall c, theta c c ▷ true -> theta c c ▷ false -> False) as Hdisj.
       { intros c Ht Hf. enough (true = false) by discriminate. eapply part_functional; eassumption. }
       edestruct (weak_strong Hdisj Hb1 Hb2 HΣ1 HΣ2 Hφ1 Hφ2) as (ψ & Hb & HΣ & Hψ1 & Hψ2).

@@ -170,7 +170,7 @@ Section Qmodel.
 
 End Qmodel.
 
-Module completeness. Section completeness.
+Section completeness.
   Existing Instance PA_funcs_signature.
   Existing Instance PA_preds_signature.
 
@@ -285,4 +285,4 @@ Module completeness. Section completeness.
   End value_disj.
   
 
-End completeness. End completeness.
+End completeness.

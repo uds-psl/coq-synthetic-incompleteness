@@ -20,8 +20,8 @@ Notation "I ⊨=L T" := (forall psi, List.In psi T -> I ⊨= psi) (at level 20).
 (* Notation for explicitely giving model *)
 Notation "I ; rho '⊨' phi" := (@sat _ _ _ I _ rho phi) (at level 20, rho at next level).
 
-Locate nat_is_Q_model.
 
+(* Utilities for first-order logic *)
 Section lemmas.
   Existing Instance PA_preds_signature.
   Existing Instance PA_funcs_signature.
@@ -150,6 +150,7 @@ Section lemmas.
 
 End lemmas.
 
+(* Definitions of comparisions *)
 Section syntax.
   Existing Instance PA_preds_signature.
   Existing Instance PA_funcs_signature.
@@ -162,6 +163,7 @@ Section syntax.
 
   Definition pless x y := ∃ y`[↑] == (x`[↑] ⊕ $0).
   Definition pless_swap x y := ∃ y`[↑] == ($0 ⊕ x`[↑]).
+  (* NOTE this definition requires extensionality of the model *)
   Definition mless {M} {I : interp M} x y := exists k, y = x i⊕ k.
 
   Lemma pless_eq x y : pless x y = ∃ y`[↑] == (x`[↑] ⊕ $0).
@@ -217,22 +219,24 @@ Section syntax.
 
 
 
-  (* TODO add *)
+  (* The definitions are opaque to avoid automatic unfolding when simplifying substitutions *)
   Global Opaque pless.
   Global Opaque pless_swap.
-  (*  Global Opaque mless.*)
 End syntax.
 (* Notations for le *)
 Notation "x '⧀=' y"  := (pless x y) (at level 42) : PA_Notation.
 Notation "x '⧀=comm' y"  := (pless_swap x y) (at level 42) : PA_Notation.
-(* NOTE this definition requires extensionality of the model *)
 Notation "x 'i⧀=' y"  := (mless x y) (at level 42) : PA_Notation.
 
+(* Make Qeq opaque to avoid simplifying under normal circumstances *)
+(* The definition does not actually become completely opaque and many goals are
+ * still solvable *)
 Definition Qeq := PA.Qeq.
 Global Opaque Qeq.
 Lemma Qeq_def : Qeq = PA.Qeq.
 Proof. reflexivity. Qed.
 
+(* setup proofmode *)
 Section PM.
   Existing Instance PA_preds_signature.
   Existing Instance PA_funcs_signature.
@@ -269,12 +273,14 @@ Global Notation "x '⊗h' y" := (bFunc Mult (Vector.cons bterm x 1 (Vector.cons 
 Global Notation "x '==h' y" := (bAtom Eq (Vector.cons bterm x 1 (Vector.cons bterm y 0 (Vector.nil bterm))) ) (at level 40) : hoas_scope.
 
 
+(* Tactic for boundedness inversions *)
 Global Ltac invert_bounds :=
   inversion 1; subst;
   repeat match goal with
            H : existT _ _ _ = existT _ _ _ |- _ => apply Eqdep_dec.inj_pair2_eq_dec in H; try decide equality
          end; subst.
 
+(* Closed terms are numerabls *)
 Section n.
   Existing Instance PA_preds_signature.
   Existing Instance PA_funcs_signature.

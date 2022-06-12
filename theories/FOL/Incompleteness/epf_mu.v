@@ -12,7 +12,7 @@ From Undecidability.H10 Require Import DPRM.
 Require Import Undecidability.Synthetic.EnumerabilityFacts.
 From Coq.Logic Require Import ConstructiveEpsilon.
 Require Import Equations.Equations.
-From Undecidability.FOL.Incompleteness Require Import utils churchs_thesis recalg fol qdec.
+From Undecidability.FOL.Incompleteness Require Import utils epf recalg fol qdec.
 
 Import ListNotations.
 
@@ -22,6 +22,7 @@ Definition mu_semi_decidable (P : nat -> Prop) :=
   exists f : recalg 1, forall x : nat,
     P x <-> (exists y, ra_rel f (Vector.cons nat x 0 (Vector.nil nat)) y).
 
+(* Construct an embedding nat -> recalg 1 *)
 Section recalg_enum.
   Variable f : nat -> option (recalg 1).
   Hypothesis f_enum : enumerator__T f (recalg 1).
@@ -62,6 +63,7 @@ Proof.
 Qed.
 
 Import ListNotations.
+(* Step indexed execution of mu recursive algorithms *)
 Definition mu_step : recalg 1 -> nat -\ nat.
 Proof.
   intros c x. unshelve eexists.
@@ -79,6 +81,7 @@ Definition mu_is_universal := forall f, exists c, forall x y, f x ▷ y <-> mu_s
 Section mu.
   Hypothesis mu_universal : mu_is_universal.
 
+  (* Mu semi-decidability implies synthetic enumerability assuming EPFmu *)
   Lemma mu_semi_decidable_enumerable (P : nat -> Prop) :
     enumerable P -> mu_semi_decidable P.
   Proof using mu_universal.
@@ -104,7 +107,8 @@ Section mu.
       exists k'. now destruct f.
   Qed.
 
-  Lemma CTmu : exists f : nat -> nat -\ nat, is_universal f.
+  (* EPFmu implies EPF_N *)
+  Lemma EPFmu : exists f : nat -> nat -\ nat, is_universal f.
   Proof using mu_universal.
     destruct recalg_invert as (f & g & H). 
     unshelve eexists.

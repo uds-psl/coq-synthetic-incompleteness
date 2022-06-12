@@ -1,6 +1,6 @@
 From Undecidability.FOL.Incompleteness Require Import utils.
 
-From Undecidability.Synthetic Require Import DecidabilityFacts.
+From Undecidability.Synthetic Require Import DecidabilityFacts EnumerabilityFacts.
 
 Local Set Implicit Arguments.
 Local Unset Strict Implicit.
@@ -12,7 +12,7 @@ Local Unset Strict Implicit.
 Definition is_universal {Y : Type} (theta : nat -> nat -\ Y) :=
   forall f : nat -\ Y, exists c, forall x y, f x ▷ y <-> theta c x ▷ y.
 
-Section ct.
+Section epf.
   Variable (theta : nat -> nat -\ bool).
   Hypothesis theta_universal : is_universal theta.
 
@@ -58,16 +58,33 @@ Section ct.
       - intros H%Hf. exists 0. cbn. congruence. }
     apply (H (f x)). now exists 0.
   Qed.
-  (* Note: function might be partial, non-conventional definition *)
+
+  (* A partial function recursively separates two predicates *)
   Definition recursively_separates (P1 P2 : nat -> Prop)  (f : nat -\ bool) :=
     (forall x, P1 x -> f x ▷ true) /\
     (forall x, P2 x -> f x ▷ false).
 
 
+  Definition theta_self_return (b : bool) : nat -> Prop :=
+    fun x => theta x x ▷ b.
+
+  Lemma theta_self_return_enumerable b : enumerable (theta_self_return b).
+  Proof. 
+    apply semi_decidable_enumerable.
+    { exists (fun n => Some n). intros n. now exists n. }
+    exists (fun c k => match core (theta c c) k, b with
+                       | Some true, true => true
+                       | Some false, false => true
+                       | _, _ => false
+                       end).
+   intros c. split; intros [k Hk]; exists k.
+   - rewrite Hk. destruct b; congruence.
+   - destruct (core _ _) as [[]|], b; congruence.
+  Qed. 
 
 
   Theorem recursively_separating_diverge (f : nat -\ bool):
-    (forall b c, theta c c ▷ b -> f c ▷ b) ->
+    (forall b c, theta_self_return b c -> f c ▷ b) ->
     exists c, forall y, ~f c ▷ y.
   Proof.
     intros H.
@@ -83,9 +100,10 @@ Section ct.
     - now exists k. 
     - assumption.
   Qed.
+
   Lemma no_recursively_separating (f : nat -> bool) : 
     (* Looks closer to required condition by destructing b *)
-    ~(forall b c, theta c c ▷ b -> f c = b).
+    ~(forall b c, theta_self_return b c -> f c = b).
   Proof.
     intros H.
     unshelve evar (g : nat -\ bool).
@@ -95,9 +113,9 @@ Section ct.
     apply (Hc (f c)). now exists 0.
   Qed.
 
-End ct.
+End epf.
 
-Section ct_nat_bool.
+Section epf_nat_bool.
   Local Definition bool_to_nat (b : bool) := if b then 1 else 0.
   Local Program Definition nat_to_bool : nat -\ bool.
   Proof.
@@ -106,7 +124,8 @@ Section ct_nat_bool.
     - exists (fun _ => Some true). congruence.
     - exists (fun _ => None). congruence.
   Defined.
-  Lemma ct_nat_bool : (exists theta : nat -> nat -\ nat, is_universal theta) -> (exists theta : nat -> nat -\ bool, is_universal theta).
+  (* EPF_N implies EPF_B *)
+  Lemma epf_nat_bool : (exists theta : nat -> nat -\ nat, is_universal theta) -> (exists theta : nat -> nat -\ bool, is_universal theta).
   Proof.
     intros [theta theta_universal].
     unshelve eexists.
@@ -124,7 +143,7 @@ Section ct_nat_bool.
       exists k'. cbn in Hk'. destruct (core (f x) k') as [[]|], y as []; cbn in *; congruence.
   Qed.
 
-End ct_nat_bool.
+End epf_nat_bool.
 
     
 

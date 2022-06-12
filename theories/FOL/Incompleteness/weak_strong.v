@@ -54,9 +54,12 @@ Section value_disjoint.
     Variable φ1 φ2 : form.
     Hypothesis (φ1_bounded : bounded 2 φ1) (φ2_bounded : bounded 2 φ2).
     Hypothesis (φ1_qdec : Qdec φ1) (φ2_qdec : Qdec φ2).
+    (* varphi1 and varphi2 are weakly representable using with single
+        * existential quantifier  over a decidable core *)
     Hypothesis (φ1_syn : forall x, P1 x <-> Qeq ⊢ ∃ φ1[(num x) ..])
                (φ2_syn : forall x, P2 x <-> Qeq ⊢ ∃ φ2[(num x) ..]).
 
+    (* Transating representability assumptions to a semantic level *)
     Local Lemma φ1_sem x ρ : P1 x <-> interp_nat; ρ ⊨ ∃ φ1[(num x) ..].
     Proof.
       rewrite φ1_syn.
@@ -81,9 +84,11 @@ Section value_disjoint.
           apply num_bound.
     Qed.
           
+    (* Definition of formulas strongly separating *)
     Definition φ1' := φ1 ∧ ∀ $0 ⧀= $2 ~> φ2[$1 .: $0 ..] ~> ⊥.
     Definition φ2' := φ2 ∧ ∀ $0 ⧀= $2 ~> φ1[$1 .: $0 ..] ~> ⊥.
 
+    (* Properties of these formulas *)
     Lemma φ1'_bounded : bounded 2 φ1'.
     Proof.
       unfold φ1'. rewrite pless_eq.
@@ -120,6 +125,7 @@ Section value_disjoint.
       - apply Qdec_bot.
     Qed.
 
+    (* Strong separation *)
     Local Lemma DR1 x : P1 x -> Qeq ⊢ ∃ φ1'[(num x)..].
     Proof.
       intros HP1. eapply Σ1_completeness with (ρ := fun _ => 0).
@@ -231,6 +237,7 @@ Section value_disjoint.
     Variable φ1 φ2 : form.
     Hypothesis (φ1_bounded : bounded 1 φ1) (φ2_bounded : bounded 1 φ2).
     Hypothesis (φ1_Σ : Σ1 φ1) (φ2_qdec : Σ1 φ2).
+    (* P1 and P2 are weakly Sigma1-representable *)
     Hypothesis (φ1_syn : forall x, P1 x <-> Qeq ⊢ φ1[(num x) ..])
                (φ2_syn : forall x, P2 x <-> Qeq ⊢ φ2[(num x) ..]).
 
@@ -239,6 +246,7 @@ Section value_disjoint.
       intros H. split; intros H'; fapply H; exact H'.
     Qed.
 
+    (* Combine above results with compression to yield strong separability from weak representability *)
     Theorem weak_strong : exists φ, Σ1 φ /\ bounded 1 φ /\
       (forall x, P1 x -> Qeq ⊢ φ[(num x)..]) /\
       (forall x, P2 x -> Qeq ⊢ ¬φ[(num x)..]).
