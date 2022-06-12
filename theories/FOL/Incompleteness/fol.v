@@ -40,6 +40,7 @@ Section lemmas.
     intros H'. apply H' with (f3 := falsity_on); clear H'. all: intros; try destruct b; trivial.
     all: intuition eauto 2.
   Qed.
+
   Lemma num_subst x ρ : (num x)`[ρ] = num x.
   Proof.
     induction x; cbn; congruence.
@@ -51,7 +52,8 @@ Section lemmas.
     - intros t []%Vectors.In_nil.
     - intros t ->%vec_singleton.
       assumption.
-   Qed.
+  Qed.
+
   Lemma subst_bound_t {ff : falsity_flag} n m t sigma : 
     (forall i, i < n -> bounded_t m (sigma i)) -> bounded_t n t -> bounded_t m (t`[sigma]).
   Proof.
@@ -80,6 +82,7 @@ Section lemmas.
     - apply IH1. intros l Hl.
       apply subst_bounded_up_t. intros i' Hi'. apply Hi. lia.
   Qed.
+
   Lemma up_invert_bound_t n t :
     bounded_t (S n) t`[↑] -> bounded_t n t.
   Proof. 
@@ -102,6 +105,7 @@ Section lemmas.
     - eassumption.
     - apply nat_is_Q_model.
   Qed.
+
   Lemma Q_sound_intu φ : Qeq ⊢I φ -> interp_nat ⊨= φ.
   Proof.
     intros H ρ. eapply soundness.
@@ -127,6 +131,7 @@ Section lemmas.
   Proof.
     induction k; cbn; congruence.
   Qed.
+
   Lemma iμ_standard (k : nat) : iμ k = k.
   Proof.
     induction k; cbn; congruence.
@@ -136,11 +141,13 @@ Section lemmas.
   Proof.
     erewrite iμ_eval_num. apply sat_single.
   Qed.
+
   Lemma sat_single_nat φ ρ k : interp_nat; (k .: ρ) ⊨ φ <-> interp_nat; ρ ⊨ φ[(num k)..].
   Proof.
     erewrite <-iμ_standard at 1.
     now rewrite sat_single_PA.
   Qed.
+
 End lemmas.
 
 Section syntax.
@@ -159,6 +166,7 @@ Section syntax.
 
   Lemma pless_eq x y : pless x y = ∃ y`[↑] == (x`[↑] ⊕ $0).
   Proof. reflexivity. Qed.
+
   Lemma pless_subst x y ρ : (pless x y)[ρ] = pless (x`[ρ]) (y`[ρ]).
   Proof.
     rewrite !pless_eq. cbn. do 3 f_equal.
@@ -184,12 +192,14 @@ Section syntax.
 
   Lemma pless_swap_eq x y : pless_swap x y = ∃ y`[↑] == ($0 ⊕ x`[↑]).
   Proof. reflexivity. Qed.
+
   Lemma pless_swap_subst x y ρ : (pless_swap x y)[ρ] = pless_swap (x`[ρ]) (y`[ρ]).
   Proof.
     rewrite !pless_swap_eq. cbn. do 3 f_equal.
     - rewrite !subst_term_comp. reflexivity. 
     - do 3 f_equal. rewrite !subst_term_comp. reflexivity. 
   Qed.
+
   Lemma pless_swap_invert_bound n x y : bounded n (pless_swap x y) -> bounded_t n x /\ bounded_t n y.
   Proof.
     unfold pless_swap. intros Hb.
@@ -306,6 +316,5 @@ Section n.
         frewrite <-H''.
         fapply ax_mult_congr; assumption.
   Qed.
-  
 
 End n.

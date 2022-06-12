@@ -12,10 +12,11 @@ From Undecidability.H10 Require Import DPRM.
 Require Import Undecidability.Synthetic.EnumerabilityFacts.
 From Coq.Logic Require Import ConstructiveEpsilon.
 Require Import Equations.Equations.
+From Undecidability.FOL.Incompleteness Require Import utils churchs_thesis recalg fol qdec.
+
 Import ListNotations.
 
 
-From Undecidability.FOL.Incompleteness Require Import utils churchs_thesis ra.
 
 Definition mu_semi_decidable (P : nat -> Prop) := 
   exists f : recalg 1, forall x : nat,
@@ -37,6 +38,7 @@ Section recalg_enum.
   Proof. 
     unfold nat_recalg, recalg_nat. now destruct constructive_indefinite_ground_description_nat_Acc.
   Qed.
+
 End recalg_enum.
 Lemma recalg_invert : exists (f : recalg 1 -> nat) (g : nat -> option (recalg 1)), forall r, g (f r) = Some r.
 Proof.
@@ -116,11 +118,11 @@ Section mu.
 End mu.
 
 
+
+
+(* Imports down here to avoid clashes between list and substitution notation *)
 From Undecidability.FOL.Util Require Import Syntax_facts FullDeduction FullDeduction_facts FullTarski FullTarski_facts Axiomatisations FA_facts Syntax.
 From Undecidability.FOL Require Import PA.
-
-From Undecidability.FOL.Incompleteness Require Import fol qdec.
-
 
 Section fol.
   Existing Instance PA_funcs_signature.
@@ -144,6 +146,7 @@ Section fol.
     Proof.
       induction n; cbn; lia.
     Qed.
+
     Fixpoint embed_poly n (p : dio_polynomial (Fin.t n) (Fin.t 1)) : term.
     Proof.
       destruct p.
@@ -177,6 +180,7 @@ Section fol.
     Proof.
       induction f; depelim v; now cbn.
     Qed.
+
     Lemma vec_pos_default_default {X : Type} {n : nat} (v : Vector.t X n) (m : nat) (d : nat -> X) :
       d m = vec_pos_default v d (m + n).
     Proof.
@@ -203,6 +207,7 @@ Section fol.
       induction v in k |-*; first reflexivity.
       cbn. now destruct k.
     Qed.
+
     Lemma vec_append1 n (v : Vector.t nat (n+1)) :
       exists k w, v = Vector.append w (Vector.cons k Vector.nil).
     Proof.
@@ -246,7 +251,7 @@ Section fol.
         setoid_rewrite embed_eval. cbn. reflexivity.
     Qed.
 
-    Lemma mu_recursive_definable : mu_semi_decidable P -> exists φ, Σ1 φ /\ bounded 1 φ /\ forall x ρ, P x <-> interp_nat; (x .: ρ) ⊨ φ.
+    Theorem mu_recursive_definable : mu_semi_decidable P -> exists φ, Σ1 φ /\ bounded 1 φ /\ forall x ρ, P x <-> interp_nat; (x .: ρ) ⊨ φ.
     Proof.
       intros [r Hr]. apply dprm_definable. do 3 apply DPRM_1. now exists r.
     Qed.

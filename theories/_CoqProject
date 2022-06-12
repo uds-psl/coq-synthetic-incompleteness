@@ -276,16 +276,16 @@ FOL/Util/Axiomatisations.v
 FOL/Util/Abstract.v
 
 FOL/Incompleteness/utils.v
-FOL/Incompleteness/churchs_thesis.v
-FOL/Incompleteness/dprm.v
+FOL/Incompleteness/epf.v
+FOL/Incompleteness/recalg.v
+FOL/Incompleteness/epf_mu.v
 FOL/Incompleteness/formal_systems.v
 FOL/Incompleteness/abstract_incompleteness.v
 FOL/Incompleteness/fol.v
 FOL/Incompleteness/qdec.v
-FOL/Incompleteness/repr.v
+FOL/Incompleteness/weak_strong.v
 FOL/Incompleteness/completeness.v
 FOL/Incompleteness/fol_incompleteness.v
-FOL/Incompleteness/ra.v
 
 FOL/Proofmode/ProofMode.v
 FOL/Proofmode/StringToIdent.v

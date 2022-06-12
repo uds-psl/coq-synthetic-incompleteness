@@ -1,4 +1,4 @@
-From Undecidability.FOL.Incompleteness Require Import utils formal_systems churchs_thesis.
+From Undecidability.FOL.Incompleteness Require Import utils formal_systems epf.
 
 From Undecidability.Synthetic Require Import DecidabilityFacts.
 
@@ -23,33 +23,34 @@ Section abstract.
 
   Section halt.
     Variable (r : nat -> S).
-    Hypothesis Hrepr : weakly_represents fs (special_halting theta) r.
+    Hypothesis Hrepr : weakly_represents fs (self_halting theta) r.
 
     Lemma halt_undecidability : ~decidable fs.(P).
     Proof.
-      intros Hdec. eapply special_halting_undec; first eassumption.
+      intros Hdec. eapply self_halting_undec; first eassumption.
       apply weakly_representable_decidable; eauto.
     Qed.
+
     Lemma halt_incompleteness' : ~complete fs.
     Proof.
       intros Hdec%complete_decidable.
       now apply halt_undecidability.
     Qed.
+
   End halt.
   Section halt.
     Variable (r : nat -> S).
-    Hypothesis Hrepr : weakly_represents fs (special_halting theta) r.
+    Hypothesis Hrepr : weakly_represents fs (self_halting theta) r.
 
     Lemma halt_incompleteness : exists n, independent fs (r n).
     Proof.
       destruct (is_provable fs) as (f & Hf1 & Hf2). 
       assert (exists c, forall b, ~f (r c) ▷ b) as [d Hd].
-      { eapply special_halting_diverge; try eassumption.
-        - intros d H. firstorder.
-        - intros d H [y Hy].
-          eapply (fs.(consistent) (r d)); firstorder. }
+      { eapply self_halting_diverge; try eassumption.
+        intros c. rewrite <-Hf1. symmetry. apply Hrepr. }
       exists d. split; firstorder.
     Qed.
+
   End halt.
 
   Section insep.
@@ -67,6 +68,7 @@ Section abstract.
       - enough (f (r c) <> true) by now destruct f.
         intros Hc. eapply (@fs.(consistent) (r c)); firstorder.
     Qed.
+
   End insep.
 
   (** ** Strengthened proof using consistency *)
@@ -83,6 +85,7 @@ Section abstract.
         intros [] c Hc; firstorder. }
       exists c. firstorder.
     Qed.
+
   End insep.
   Section insep.
     Variable (fs' : FS S neg).
@@ -98,16 +101,18 @@ Section abstract.
       firstorder.
     Qed.
 
-    Lemma insep_essential_incompleteness : exists n, independent fs (r n).
+    Theorem insep_essential_incompleteness : exists n, independent fs (r n).
     Proof.
       apply (@insep_incompleteness r).
       apply strong_separability_extension.
     Qed.
-    Lemma insep_essential_undecidability : ~decidable (fun s => fs ⊢F s).
+
+    Theorem insep_essential_undecidability : ~decidable (fun s => fs ⊢F s).
     Proof.
       intros H. 
       eapply insep_undecidability; eauto using strong_separability_extension.
     Qed.
+
   End insep.
 
 End abstract.

@@ -48,6 +48,7 @@ Section Qdec.
     - fapply H0. ctx.
     - fapply H0. ctx.
   Qed.
+
   Lemma Qdec_or φ ψ : Qdec φ -> Qdec ψ -> Qdec (φ ∨ ψ).
   Proof. 
     intros Hφ Hψ ρ. invert_bounds. cbn.
@@ -57,6 +58,7 @@ Section Qdec.
     - fapply H0. ctx.
     - fapply H1. ctx.
   Qed.
+
   Lemma Qdec_impl φ ψ : Qdec φ -> Qdec ψ -> Qdec (φ ~> ψ). 
   Proof.
     intros Hφ Hψ ρ. invert_bounds. cbn.
@@ -66,6 +68,7 @@ Section Qdec.
     - left. fintros. fapply H1.
     - left. fintros. fexfalso. fapply H0. ctx.
   Qed.
+  
   Lemma Qdec_eq t s : Qdec (t == s).
   Proof.
     intros ρ. cbn. invert_bounds. 
@@ -112,6 +115,7 @@ Section Qdec.
         * apply Vector.In_cons_hd.
         * apply Vector.In_cons_tl, Vector.In_cons_hd.
   Qed.
+
   Lemma subst_up φ t1 t2 :
     φ[up t1..][t2..] = φ[t2`[↑]..][t1..].
   Proof.
@@ -197,6 +201,7 @@ Section Qdec.
         frewrite <-(ax_add_rec zero x0).
         frewrite <- "H0". fapply "H".
   Qed.
+
   Lemma add_zero_num t :
     Qeq ⊢ num t ⊕ zero == num t.
   Proof.
@@ -205,6 +210,7 @@ Section Qdec.
     - cbn. frewrite (ax_add_rec zero (num t)).
       fapply ax_succ_congr. apply IHt.
   Qed.
+
   Lemma add_rec_swap t :
     Qeq ⊢ ∀ ∀ $0 ⊕ σ $ 1 == σ num t ~> $0 ⊕ $1 == num t.
   Proof. 
@@ -252,6 +258,7 @@ Section Qdec.
       frewrite <- (ax_add_rec x0 x1). frewrite <- "H0".
       fapply "H".
   Qed.
+
   Lemma pless_swap_zero_eq : Qeq ⊢ ∀ ($0 ⧀=comm zero) ~> $0 == zero.
   Proof.
     rewrite !pless_swap_eq. 
@@ -300,17 +307,20 @@ Section Qdec.
     fspecialize (Hars z x). rewrite !num_subst in Hars.
     fapply ax_sym. fapply Hars. fapply ax_sym. fapply "Hz".
   Qed.
+
   Lemma pless_swap_succ t : Qeq ⊢ ∀ ($0 ⧀=comm num t) ~> ($0 ⧀=comm σ (num t)).
   Proof. 
     rewrite !pless_swap_eq, !num_subst.
     fstart. fintros x "[z Hz]". fexists (σ z).
     frewrite (ax_add_rec x z). fapply ax_succ_congr. ctx.
   Qed.
+
   Lemma pless_swap_sym t : Qeq ⊢ num t ⧀=comm num t.
   Proof.
     rewrite !pless_swap_eq.
     fexists zero. fapply ax_sym. fapply ax_add_zero.
   Qed.
+
   Lemma pless_sym t : Qeq ⊢ num t ⧀= num t.
   Proof.
     rewrite !pless_eq.
@@ -328,6 +338,7 @@ Section Qdec.
       frewrite <-(ax_add_rec x z').
       frewrite <-"Hz'". ctx.
   Qed. 
+
   Lemma pless_sigma_neq t : Qeq ⊢ ∀ ($0 ⧀= σ(num t)) ~> ¬($0 == σ(num t)) ~> $0 ⧀= num t.
   Proof. 
     rewrite !pless_eq. 
@@ -418,6 +429,7 @@ Section Qdec.
           -- fapply "H0".
           -- fapply "H2".
   Qed.
+
   Lemma bounded_exist_disj φ t :
     Qeq ⊢ (∃ ($0 ⧀= (num t)) ∧ φ) <~> fin_disj t φ.
   Proof.
@@ -497,6 +509,7 @@ Section Qdec.
           rewrite pless_swap_subst. cbn. rewrite num_subst.
           pose proof (pless_swap_sym (S t)). cbn in H. fapply H.
   Qed.
+
   Lemma Qdec_fin_conj φ t :
     Qdec φ -> Qdec (fin_conj t φ).
   Proof.
@@ -513,6 +526,7 @@ Section Qdec.
       + right. fintros. fdestruct 0.
         fapply H1. fapply 1.
   Qed.
+
   Lemma Qdec_fin_disj φ t :
     Qdec φ -> Qdec (fin_disj t φ).
   Proof.
@@ -526,6 +540,7 @@ Section Qdec.
       + fapply H1. ctx.
       + fapply H0. ctx.
   Qed.
+
   Lemma bounded_t_0 t ρ :
     bounded_t 0 t -> t`[ρ] = t.
   Proof.
@@ -552,6 +567,7 @@ Section Qdec.
     - cbn. f_equal; first assumption.
       apply subst_up2. solve_bounds. apply num_bound.
   Qed.
+
   Lemma fin_conj_bound n φ :
     bounded 1 φ -> bounded 0 (fin_conj n φ).
   Proof.
@@ -566,7 +582,7 @@ Section Qdec.
   (* NOTE: this lemma could be strengthened to allow arbitrary terms t`[↑] in
    * place of $(S t). Unfortunately this leads to horrible substitution lemmas 
    * and boundedness inversions. *)
-  Lemma Qdec_bounded_forall t φ :
+  Theorem Qdec_bounded_forall t φ :
     Qdec φ -> Qdec (∀ $0 ⧀= $(S t) ~> φ).
   Proof.
     intros HQdec ρ Hb. cbn. rewrite pless_subst. cbn.
@@ -618,6 +634,7 @@ Section Qdec.
     - cbn. f_equal; first assumption.
       apply subst_up2. solve_bounds. apply num_bound.
   Qed.
+
   Lemma fin_disj_bound n φ :
     bounded 1 φ -> bounded 0 (fin_disj n φ).
   Proof.
@@ -629,7 +646,7 @@ Section Qdec.
       intros [|n'] Hn; last lia. apply (num_bound (S n)).
   Qed.
 
-  Lemma Qdec_bounded_exists t φ :
+  Theorem Qdec_bounded_exists t φ :
     Qdec φ -> Qdec (∃ ($0 ⧀= $(S t)) ∧ φ).
   Proof.
     intros HQdec ρ Hb. cbn. rewrite pless_subst. cbn.
@@ -670,7 +687,8 @@ Section Qdec.
       rewrite !pless_eq. cbn. fdestruct "H".
       fexists x0. frewrite <-"H". fapply ax_sym. fapply Hn.
   Qed.
-  Lemma Qdec_bounded_exists_comm t φ :
+
+  Theorem Qdec_bounded_exists_comm t φ :
     Qdec φ -> Qdec (∃ ($0 ⧀=comm $(S t)) ∧ φ).
   Proof.
     intros HQdec ρ Hb. cbn. rewrite pless_swap_subst. cbn.
@@ -739,6 +757,7 @@ Section Sigma1.
     - cbn. constructor. apply IH.
     - constructor. apply Qdec_subst, H.
   Qed.
+
   Lemma Π1_subst φ ρ : Π1 φ -> Π1 φ[ρ].
   Proof.
     induction 1 as [α H IH | α H] in ρ |-*.
@@ -880,6 +899,7 @@ Section Sigma1.
     - exists (S n), ψ. now rewrite Hψ.
     - now exists 0, φ.
   Qed.
+
   Lemma bounded_exist_times φ n k : bounded (n + k) φ <-> bounded k (exist_times n φ).
   Proof.
     induction n in k |-*; split.
@@ -896,6 +916,7 @@ Section Sigma1.
     destruct (@exists_compression ψ n k) as (ψ' & HΔ' & Hb' & H').
     all: firstorder using bounded_exist_times.
   Qed.
+
 End Sigma1.
 Section Sigma1completeness.
   Existing Instance PA_preds_signature.
@@ -905,7 +926,7 @@ Section Sigma1completeness.
 
   (* substitution here as its needed for the induction *)
   (** # <a id="Sigma1_completeness" /> #*)
-  Lemma Σ1_completeness φ ρ : Σ1 φ -> bounded 0 φ -> interp_nat; ρ ⊨ φ -> Qeq ⊢ φ.
+  Theorem Σ1_completeness φ ρ : Σ1 φ -> bounded 0 φ -> interp_nat; ρ ⊨ φ -> Qeq ⊢ φ.
   Proof.
     enough (forall ρ, Σ1 φ -> bounded 0 φ[ρ] -> interp_nat ⊨= φ[ρ] -> Qeq ⊢ φ[ρ]).
     { intros HΣ Hb Hsat. rewrite <-subst_var. apply H.
@@ -934,7 +955,7 @@ Section Sigma1completeness.
 
 
   (** # <a id="Sigma1_witness" /> #*)
-  Lemma Σ1_witness φ : Σ1 φ -> bounded 1 φ -> Qeq ⊢ ∃φ -> exists x, Qeq ⊢ φ[(num x)..].
+  Theorem Σ1_witness φ : Σ1 φ -> bounded 1 φ -> Qeq ⊢ ∃φ -> exists x, Qeq ⊢ φ[(num x)..].
   Proof.
     intros Hb HΣ Hφ. eapply Q_sound_intu with (rho := fun _ => 0) in Hφ as [x Hx].
     exists x. eapply Σ1_completeness with (ρ := fun _ => 0).

@@ -19,14 +19,17 @@ Definition mu (p : nat -> Prop) :
 Proof.
   apply constructive_indefinite_ground_description_nat_Acc.
 Qed.
+
 Lemma vec_1_inv X (v : vec X 1) : {a & v = a ## vec_nil}.
 Proof.
   repeat depelim v. eauto.
 Qed.
+
 Lemma vec_2_inv X (v : vec X 2) : { a & { b & v = a ## b ## vec_nil} }.
 Proof.
   repeat depelim v. eauto.
 Qed.
+
 Lemma vec_singleton {X} (a b : X) : Vector.In a (Vector.cons _ b _ (Vector.nil _)) -> a = b.
 Proof.
   inversion 1.
@@ -35,7 +38,7 @@ Proof.
 Qed.
 
 (** * Synthetic computability *)
-(** ** Partial functions *)
+(** **)
 
 Definition core_valid {Y : Type} (core : nat -> option Y) :=
   forall y1 y2 k1 k2, core k1 = Some y1 -> core k2 = Some y2 -> y1 = y2.
@@ -65,10 +68,11 @@ Proof.
     + left. eauto.
     + right. now intros [y Hy].
 Qed.
+
 Notation "A -\ B" := (A -> part B) (at level 30).
 
 
-Lemma totalise X Y (f : X -\ Y) : (forall x, exists y, f x ▷ y) -> forall x, {y & f x ▷ y}.
+Theorem totalise X Y (f : X -\ Y) : (forall x, exists y, f x ▷ y) -> forall x, {y & f x ▷ y}.
 Proof.
   intros H x. apply totalise_part, H.
 Qed.
@@ -78,6 +82,27 @@ Proof.
   intros [k1 H1] [k2 H2].
   eapply (p.(valid)); eassumption.
 Qed.
+
+Program Definition comp_part_total Y Z (f : Y -> Z) (g : part Y) : part Z.
+Proof.
+  unshelve eexists.
+  { intros k. exact (match g.(core) k with Some y => Some (f y) | None => None end). }
+  intros z1 z2 k1 k2 H1 H2. 
+  destruct (core _ k1) as [y1|] eqn:Hk1, (core _ k2) as [y2|] eqn:Hk2; try congruence.
+  enough (y1 = y2) by congruence.
+  eapply part_functional; eexists; eassumption.
+Defined.
+Program Definition comp_part_partial Y Z (f : Y -\ Z) (g : part Y) : part Z.
+Proof.
+  unshelve eexists.
+  { intros k. exact (match g.(core) k with Some y => (f y).(core) k | None => None end). }
+  intros z1 z2 k1 k2 H1 H2. 
+  destruct (core _ k1) as [y1|] eqn:Hk1, (core _ k2) as [y2|] eqn:Hk2; try congruence.
+  assert (y1 = y2) as ->.
+  { eapply part_functional with (p := g); eexists; eassumption. }
+  eapply part_functional; eexists; eassumption.
+Defined.
+
 
 
 

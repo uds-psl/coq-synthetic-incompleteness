@@ -39,7 +39,7 @@ Section facts.
 
   Definition complete := forall s, fs ⊢F s \/ fs ⊢F neg s.
   Definition independent s := fs ⊬F s /\ fs ⊬F neg s.
-  Lemma is_provable : exists f : S -\ bool, 
+  Theorem is_provable : exists f : S -\ bool, 
     (forall s, fs ⊢F s <-> f s ▷ true) /\
     (forall s, fs ⊢F neg s <-> f s ▷ false).
   Proof.
@@ -75,6 +75,7 @@ Section facts.
       destruct (prov k) as [s'|] eqn:H. 2: discriminate.
       repeat destruct S_eqdec; congruence.
   Qed.
+  
   Lemma complete_decidable : complete -> decidable fs.(P).
   Proof.
     intros complete. destruct is_provable as [f Hf].

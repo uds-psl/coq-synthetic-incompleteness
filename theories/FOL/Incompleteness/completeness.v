@@ -31,36 +31,42 @@ Section Qmodel.
     { cbn in H. now apply H. }
     apply QM. search_list.
   Qed.
+
   Lemma add_rec m n : iσ m i⊕ n = iσ (m i⊕ n).
   Proof.
     rewrite <-Mext. enough (I ⊨= ax_add_rec).
     { cbn in H. now apply H. }
     apply QM. search_list.
   Qed.
+
   Lemma mult_zero m : iO i⊗ m = iO.
   Proof.
     rewrite <-Mext. enough (I ⊨= ax_mult_zero).
     { cbn in H. now apply H. }
     apply QM. search_list.
   Qed.
+
   Lemma mult_rec m n : iσ m i⊗ n = n i⊕ m i⊗ n.
   Proof.
     rewrite <-Mext. enough (I ⊨= ax_mult_rec).
     { cbn in H. now apply H. }
     apply QM. search_list.
   Qed.
+
   Lemma zero_succ m : ~iO = iσ m.
   Proof.
     rewrite <-Mext. enough (I ⊨= ax_zero_succ).
     { cbn in H. unfold "~". now apply H. }
     apply QM. search_list.
   Qed.
+
   Lemma succ_inj m n : iσ m = iσ n -> m = n.
   Proof.
     rewrite <-!Mext. enough (I ⊨= ax_succ_inj).
     { cbn in H. now apply H. }
     apply QM. search_list.
   Qed.
+
   Lemma cases m : m = iO \/ exists m', m = iσ m'.
   Proof.
     enough (m i= iO \/ exists m', m i= iσ m') as [H|(m' & Hm)].
@@ -95,6 +101,7 @@ Section Qmodel.
     - now exists 0.
     - exists (S n). cbn. congruence.
   Qed.
+
   Lemma standard_succ (m : M) : standard m <-> standard (iσ m).
   Proof.
     split.
@@ -105,6 +112,7 @@ Section Qmodel.
       cbn. apply succ_inj.
       replace (k-0) with k by lia. assumption.
   Qed.
+
   Lemma standard_add (m n : M) : standard (m i⊕ n) <-> standard m /\ standard n.
   Proof.
     split.
@@ -148,6 +156,7 @@ Section Qmodel.
   Proof.
     intros [n' <-]. apply standard_le.
   Qed.
+
   Lemma nonstandard_large (n : nat) (m : M) : ~standard m -> iμ n i⧀= m.
   Proof.
     induction n in m |-*.
@@ -158,6 +167,7 @@ Section Qmodel.
         { contradict H. now rewrite <-standard_succ. }
         exists d. cbn. rewrite add_rec. congruence.
   Qed.
+
 End Qmodel.
 
 Module completeness. Section completeness.
@@ -180,6 +190,7 @@ Module completeness. Section completeness.
     - rewrite <-subst_var. now apply H.
     - contradict H1. pattern φ. rewrite <-subst_var. now apply H.
   Qed.
+
   Lemma Qdec_absoluteness_nat M (I : interp M) (QM : I ⊨=L Qeq) (Mext : extensional I) ρN ρM φ :
     bounded 0 φ -> Qdec φ -> interp_nat; ρN ⊨ φ <-> I; ρM ⊨ φ.
   Proof.
@@ -208,6 +219,7 @@ Module completeness. Section completeness.
       intros H. eapply bounded_subst; first eassumption.
       intros [|[|k]]; easy + lia.
     Qed.
+
     Lemma φ1_sem' x ρ : P1 x <-> exists k, interp_nat; ρ ⊨ φ1[num x .: (num k) ..].
     Proof.
       rewrite φ1_sem. cbn.
@@ -215,6 +227,7 @@ Module completeness. Section completeness.
       setoid_rewrite (bounded_subst_2 _ φ1_bounded).
       setoid_rewrite num_subst. reflexivity.
     Qed.
+
     Lemma φ2_sem' x ρ : P2 x <-> exists k, interp_nat; ρ ⊨ φ2[num x .: (num k) ..].
     Proof.
       rewrite φ2_sem. cbn.
@@ -223,7 +236,7 @@ Module completeness. Section completeness.
       setoid_rewrite num_subst. reflexivity.
     Qed.
 
-    Lemma DR1 x : P1 x -> Qeq ⊢C ∃ φ1'[(num x)..].
+    Theorem DR1 x : P1 x -> Qeq ⊢C ∃ φ1'[(num x)..].
     Proof.
       intros H. apply completeness. intros M I ρ Mext QM.
       assert (exists k, (fun _ => 0) ⊨ φ1[num x .: (num k) ..]) as [k Hk] by now apply φ1_sem'.
@@ -245,7 +258,8 @@ Module completeness. Section completeness.
         eapply subst_bound; last eassumption.
         intros [|[|n]] Hn; (apply num_bound + lia).
     Qed.
-    Lemma DR2 x : P2 x -> Qeq ⊢C ¬∃ φ1'[(num x)..].
+
+    Theorem DR2 x : P2 x -> Qeq ⊢C ¬∃ φ1'[(num x)..].
     Proof.
       intros H. apply completeness. intros M I ρ Mext QM [k [Hk1 Hk2]].
       cbn in Hk1, Hk2. cbn.
@@ -267,6 +281,7 @@ Module completeness. Section completeness.
         eapply subst_bound; last eassumption.
         intros [|[|n]] Hn; (apply num_bound + lia).
     Qed.
+
   End value_disj.
   
 

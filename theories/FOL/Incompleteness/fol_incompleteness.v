@@ -4,7 +4,7 @@ From Undecidability.Shared Require Import Dec embed_nat.
 From Undecidability.FOL.Util Require Import Syntax_facts FullDeduction FullDeduction_facts FullTarski FullTarski_facts Axiomatisations FA_facts Syntax.
 From Undecidability.FOL Require Import PA.
 From Undecidability.FOL.Proofmode Require Import Theories ProofMode Hoas.
-From Undecidability.FOL.Incompleteness Require Import formal_systems abstract_incompleteness fol qdec repr utils churchs_thesis dprm.
+From Undecidability.FOL.Incompleteness Require Import formal_systems abstract_incompleteness fol qdec weak_strong utils epf epf_mu.
 
 From Undecidability.H10 Require Import DPRM dio_single.
 
@@ -102,6 +102,7 @@ Section fol.
       - unfold extension. cbn. intros φ Hφ. now eapply WeakT.
       - assumption.
     Qed.
+
   End incomplete_strong_repr.
 
 
@@ -128,6 +129,7 @@ Section fol.
       - intros H. rewrite sat_single_nat. eapply soundness; first eassumption.
         apply nat_is_Q_model.
     Qed.
+
   End Q_weakly_represents.
 
 
@@ -157,6 +159,7 @@ Section fol.
      - rewrite Hk. destruct b; congruence.
      - destruct (core _ _) as [[]|], b; congruence.
     Qed. 
+
     Theorem Q_undecidable : ~decidable (@tprv _ _ _ p T).
     Proof.
       assert (exists f : nat -> nat -\ bool, is_universal f) as [theta theta_universal].
@@ -174,6 +177,7 @@ Section fol.
       - exists Qeq. split; first auto.
         now apply prv_intu_class.
     Qed.
+
     Theorem Q_incomplete : exists φ, bounded 0 φ /\ Σ1 φ /\ ~@tprv _ _ _ p T φ /\ ~@tprv _ _ _ p T (¬φ).
     Proof. 
       assert (exists f : nat -> nat -\ bool, is_universal f) as [theta theta_universal].
@@ -198,6 +202,7 @@ Section fol.
       - apply H.
       - apply H.
     Qed.
+
   End Q_incomplete.
 
 End fol.

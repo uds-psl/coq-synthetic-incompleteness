@@ -38,6 +38,7 @@ Section Qtrichotomy.
           fdestruct "H0". fexists x0. frewrite "H". frewrite "H0".
           fapply ax_sym. fapply ax_add_rec.
   Qed.
+
 End Qtrichotomy.
 
 
@@ -67,6 +68,7 @@ Section value_disjoint.
           intros [|[|n]] H; cbn. 2-3: solve_bounds.
           apply num_bound.
     Qed.
+
     Local Lemma φ2_sem x ρ : P2 x <-> interp_nat; ρ ⊨ ∃ φ2[(num x) ..].
     Proof.
       rewrite φ2_syn.
@@ -90,6 +92,7 @@ Section value_disjoint.
       - eapply subst_bound; last eassumption.
         intros [|[|n]] H; cbn; solve_bounds.
     Qed.
+
     Lemma φ2'_bounded : bounded 2 φ2'.
     Proof.
       unfold φ2'. rewrite pless_eq.
@@ -98,6 +101,7 @@ Section value_disjoint.
       - eapply subst_bound; last eassumption.
         intros [|[|n]] H; cbn; solve_bounds.
     Qed.
+
     Lemma φ1'_qdec : Qdec φ1'.
     Proof.
       apply Qdec_and; first assumption.
@@ -106,6 +110,7 @@ Section value_disjoint.
       - apply Qdec_subst, φ2_qdec.
       - apply Qdec_bot.
     Qed.
+
     Lemma φ2'_qdec : Qdec φ2'.
     Proof.
       apply Qdec_and; first assumption.
@@ -134,6 +139,7 @@ Section value_disjoint.
         + easy.
         + lia.
     Qed.
+
     Local Lemma DR1' x : P2 x -> Qeq ⊢ ∃ φ2'[(num x)..].
     Proof. 
       intros HP1. eapply Σ1_completeness with (ρ := fun _ => 0).
@@ -153,6 +159,7 @@ Section value_disjoint.
         + lia.
       - eapply φ2_sem. exists k. apply Hk.
     Qed.
+
     Local Lemma DR2 x : P2 x -> Qeq ⊢ ¬∃ φ1'[(num x)..].
     Proof. 
       cbn. intros HP2. 
@@ -215,6 +222,7 @@ Section value_disjoint.
         intros [|[|n]] Hn; cbn. 2-3:solve_bounds.
         now rewrite num_subst.
     Qed.
+
   End value_disjoint'.
 
   Section weak_strong.
@@ -230,7 +238,8 @@ Section value_disjoint.
     Proof.
       intros H. split; intros H'; fapply H; exact H'.
     Qed.
-    Lemma weak_strong : exists φ, Σ1 φ /\ bounded 1 φ /\
+
+    Theorem weak_strong : exists φ, Σ1 φ /\ bounded 1 φ /\
       (forall x, P1 x -> Qeq ⊢ φ[(num x)..]) /\
       (forall x, P2 x -> Qeq ⊢ ¬φ[(num x)..]).
     Proof.
