@@ -24,7 +24,7 @@ The development can be found at [`theories/FOL/Incompleteness/`](https://github.
 
 ### Manual installation
 
-You need `Coq 8.13` built on OCAML `>= 4.07.1`, the [Smpl](https://github.com/uds-psl/smpl) package, the [Equations](https://mattam82.github.io/Coq-Equations/) package, and the [MetaCoq](https://metacoq.github.io/metacoq/) package for Coq. If you are using opam 2 you can use the following commands to install the dependencies on a new switch:
+You need `Coq 8.12` built on OCAML `>= 4.07.1`, the [Smpl](https://github.com/uds-psl/smpl) package, the [Equations](https://mattam82.github.io/Coq-Equations/) package, and the [MetaCoq](https://metacoq.github.io/metacoq/) package for Coq. If you are using opam 2 you can use the following commands to install the dependencies on a new switch:
 
 ```
 opam switch create coq-library-undecidability 4.07.1+flambda
@@ -37,7 +37,7 @@ opam install . --deps-only
 
 - navigate to the `theories` directory
 - `make all` builds the whole library and might take >30min
-- `make FOL/Incompleteness/fol_incompleteness.vo FOL/Incompleteness/completeness.vo` compiles all files necessary to assess the incompleteness results
+- `make FOL/Incompleteness/fol_incompleteness.vo FOL/Incompleteness/completeness.vo` compiles all files necessary to assess the incompleteness results in <15min
 - `make html` generates clickable coqdoc `.html` in the `website` subdirectory
 - `make clean` removes all build files in `theories` and `.html` files in the `website` directory
 
@@ -58,5 +58,5 @@ To avoid this, you can use a non-local opam switch, i.e. `opam switch create 4.0
 
 #### Coq version
 
-Be careful that this branch only compiles under `Coq 8.13`. If you want to use a different Coq version you have to change to a different branch.
+Be careful that this branch only compiles under `Coq 8.12`. If you want to use a different Coq version you have to change to a different branch.
 

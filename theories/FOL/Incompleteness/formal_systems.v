@@ -10,8 +10,8 @@ From Equations Require Import Equations.
 Local Set Implicit Arguments.
 Local Unset Strict Implicit.
 
-(** * Abstract Incompleteness *)
-(** ** Formal Systems *)
+(** * Abstract incompleteness *)
+(** ** Formal systems *)
 
 Record FS (S : Type) (neg : S -> S) : Type := 
   mkFS { fprv : S -> Prop
