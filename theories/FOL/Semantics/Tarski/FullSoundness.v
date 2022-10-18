@@ -1,4 +1,3 @@
-(** ** Tarski Soundness *)
 
 Require Import Undecidability.FOL.Syntax.Facts.
 Require Import Undecidability.FOL.Semantics.Tarski.FullFacts.

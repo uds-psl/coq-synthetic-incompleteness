@@ -1,4 +1,3 @@
-(** ** Eliminating excluded middle *)
 
 Require Import List Lia.
 

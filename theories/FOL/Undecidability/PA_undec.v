@@ -1,4 +1,3 @@
-(** ** Peano Arithmetic *)
 
 Require Import Undecidability.Synthetic.Definitions Undecidability.Synthetic.Undecidability.
 Require Import Undecidability.FOL.Arithmetics.Problems.

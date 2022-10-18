@@ -10,7 +10,6 @@ Context {eq_dec_Funcs : EqDec Σ_funcs}.
 Context {eq_dec_Preds : EqDec Σ_preds}.
 
 
-(** ** Lindenbaum Algebra *)
 
 Section Completeness.
 
@@ -64,7 +63,6 @@ Section Completeness.
   Definition lb_Pr P v : lb_calg :=
     embed (atom P v).
 
-  (** ** Heyting Completeness *)
 
   Lemma lindenbaum_hsat phi :
     down phi ≡ proj1_sig (hsat lb_Pr phi).
@@ -250,7 +248,6 @@ End Completeness.
 
 
 
-(** ** Boolean Completeness *)
 #[local] Hint Constructors prv : core.
 Instance clb_alg : HeytingAlgebra.
 Proof.

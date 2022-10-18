@@ -10,7 +10,6 @@ From Undecidability.FOL.Proofmode Require Import Theories ProofMode.
 Require Import Lia String List.
 Import ListNotations.
 
-(** ** Church's Thesis for Q *)
 Section ctq.
   Context {pei : peirce}.
 

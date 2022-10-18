@@ -1,4 +1,3 @@
-(** ** Essential Incompleteness of Q *)
 
 From Undecidability.Shared Require Import embed_nat Dec.
 From Undecidability.Synthetic Require Import Definitions EnumerabilityFacts.
