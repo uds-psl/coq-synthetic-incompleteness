@@ -10,7 +10,7 @@ Require Import String.
 
 
 Open Scope string_scope.
-(* ** Sigma1 completeness *)
+(** ** Σ1 completeness *)
 
 Section Sigma1.
   Existing Instance PA_preds_signature.

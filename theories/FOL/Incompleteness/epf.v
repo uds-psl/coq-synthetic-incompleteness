@@ -8,7 +8,7 @@ Local Unset Strict Implicit.
 
 
 
-(* ** Church's thesis *)
+(** ** Church's thesis *)
 
 Definition is_universal {Y : Type} (theta : nat -> nat -\ Y) :=
   forall f : nat -\ Y, exists c, forall x y, f x ▷ y <-> theta c x ▷ y.

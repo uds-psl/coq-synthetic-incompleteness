@@ -39,7 +39,7 @@ Qed.
 
 
 
-(* * Synthetic computability *)
+(** * Synthetic computability *)
 (* Partial functions **)
 
 Definition core_valid {Y : Type} (core : nat -> option Y) :=
